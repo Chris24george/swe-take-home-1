@@ -123,19 +123,28 @@ def detect_seasonality(data):
     """
     Detect seasonal patterns in the data.
     
-    Note: Our sample dataset (~6 weeks) is insufficient for true seasonality detection.
-    This returns detected: false honestly, but the logic is structured to support
-    seasonality detection when sufficient data exists (6-12+ months).
+    Seasonality is detected when:
+    1. Data spans at least 2 years (to detect repeating patterns)
+    2. At least 3 seasons have sufficient data points
+    3. Between-season variance > within-season variance (seasons differ more than noise)
+    4. Per-season trends calculated if 3+ years available for that season
+    
+    Note: Our sample dataset (single year, 2025 only) is insufficient.
+    This will return detected=false honestly for insufficient data,
+    but implements full logic for when sufficient multi-year data exists.
     
     Args:
-        data: Dict with 'dates' key
+        data: Dict with 'dates' and 'values' keys
         
     Returns:
-        Dict with 'detected', 'period', and 'confidence' keys
+        Dict with 'detected', 'period', 'confidence', and optionally 'pattern' keys
     """
-    dates = data['dates']
+    from collections import defaultdict
     
-    if not dates:
+    dates = data['dates']
+    values = data['values']
+    
+    if not dates or not values:
         return {
             'detected': False,
             'period': 'none',
@@ -145,27 +154,136 @@ def detect_seasonality(data):
     # Convert to datetime objects
     date_objects = [datetime.strptime(str(d), '%Y-%m-%d') for d in dates]
     
-    # Calculate date range span
-    date_range_days = (max(date_objects) - min(date_objects)).days
-    
-    # Need at least 180 days (~6 months) for meaningful seasonal pattern detection
-    if date_range_days < 180:
+    # Check if we have multiple years of data
+    # Need at least 2 years to detect repeating seasonal patterns
+    years_present = set(d.year for d in date_objects)
+    if len(years_present) < 2:
         return {
             'detected': False,
             'period': 'none',
             'confidence': 0.0
         }
     
-    # If we had sufficient data, we would:
-    # 1. Group data by season (map month to season)
-    # 2. Calculate average per season
-    # 3. Detect recurring patterns
-    # 4. Measure confidence via variance analysis
+    # Group data by season and year
+    # seasonal_data[season][year] = [values...]
+    seasonal_yearly_data = defaultdict(lambda: defaultdict(list))
     
-    # For now, this will always return false for our sample data
+    for date_obj, value in zip(date_objects, values):
+        year = date_obj.year
+        month = date_obj.month
+        
+        # Map month to season
+        if month in [12, 1, 2]:
+            season = 'winter'
+        elif month in [3, 4, 5]:
+            season = 'spring'
+        elif month in [6, 7, 8]:
+            season = 'summer'
+        else:  # 9, 10, 11
+            season = 'fall'
+        
+        seasonal_yearly_data[season][year].append(value)
+    
+    # Calculate average for each season across all years
+    seasonal_averages = {}
+    seasonal_all_values = defaultdict(list)  # For within-season variance
+    
+    for season in ['winter', 'spring', 'summer', 'fall']:
+        if season in seasonal_yearly_data:
+            # Collect all values for this season across all years
+            all_values = []
+            for year_values in seasonal_yearly_data[season].values():
+                all_values.extend(year_values)
+            
+            if len(all_values) >= 2:
+                seasonal_averages[season] = float(np.mean(all_values))
+                seasonal_all_values[season] = all_values
+    
+    # Need at least 3 seasons with data
+    if len(seasonal_averages) < 3:
+        return {
+            'detected': False,
+            'period': 'none',
+            'confidence': 0.0
+        }
+    
+    # Calculate between-season variance (how different are seasons from each other?)
+    avg_list = list(seasonal_averages.values())
+    between_variance = float(np.var(avg_list))
+    
+    # Calculate within-season variance (how consistent is each season?)
+    within_variances = []
+    for season, all_values in seasonal_all_values.items():
+        if len(all_values) >= 2:
+            within_variances.append(float(np.var(all_values)))
+    
+    avg_within_variance = float(np.mean(within_variances)) if within_variances else 0.0
+    
+    # Determine if seasonality is detected
+    # Seasons must differ significantly more than noise within seasons
+    if avg_within_variance == 0:
+        # All seasons are perfectly consistent → strong seasonality
+        detected = between_variance > 0  # As long as seasons differ at all
+        confidence = 1.0 if detected else 0.0
+    elif between_variance > avg_within_variance * 2:
+        detected = True
+        # Confidence based on ratio (higher = stronger pattern)
+        confidence = min(1.0, between_variance / (avg_within_variance * 10))
+    else:
+        detected = False
+        confidence = 0.0
+    
+    if not detected:
+        return {
+            'detected': False,
+            'period': 'none',
+            'confidence': 0.0
+        }
+    
+    # Build pattern with per-season trends
+    pattern = {}
+    
+    for season in ['winter', 'spring', 'summer', 'fall']:
+        if season not in seasonal_averages:
+            continue
+        
+        # Calculate trend for this season across years
+        season_yearly_avgs = []
+        season_years = []
+        
+        for year in sorted(seasonal_yearly_data[season].keys()):
+            year_values = seasonal_yearly_data[season][year]
+            if year_values:
+                season_yearly_avgs.append(np.mean(year_values))
+                season_years.append(year)
+        
+        # Determine per-season trend (need at least 3 years for meaningful trend)
+        if len(season_yearly_avgs) >= 3:
+            # Linear regression on yearly averages
+            coefficients = np.polyfit(season_years, season_yearly_avgs, 1)
+            slope = coefficients[0]
+            
+            # Classify trend
+            slope_threshold = 0.1
+            if abs(slope) < slope_threshold:
+                trend = 'stable'
+            elif slope > 0:
+                trend = 'increasing'
+            else:
+                trend = 'decreasing'
+        else:
+            # Not enough years to determine trend
+            trend = 'stable'
+        
+        pattern[season] = {
+            'avg': round(seasonal_averages[season], 1),
+            'trend': trend
+        }
+    
     return {
-        'detected': False,
-        'period': 'none',
-        'confidence': 0.0
+        'detected': True,
+        'period': 'yearly',
+        'confidence': round(confidence, 2),
+        'pattern': pattern
     }
 

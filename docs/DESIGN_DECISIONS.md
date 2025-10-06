@@ -482,11 +482,61 @@ for date, value, quality in zip(dates, values, qualities):
         # Flag as anomaly with deviation score
 ```
 
-**Seasonality Limitation:**
-- Our sample data spans only ~6 weeks (Jan-Feb 2025)
-- Requires minimum 6-12 months for meaningful seasonal pattern detection
-- Returns `detected: false` honestly rather than generating misleading patterns
-- Framework ready for future data: group by season, calculate averages, detect patterns
+**Seasonality Detection:**
+
+Full algorithm implemented, returns `detected: false` for our single-year sample data.
+
+**Detection criteria:**
+1. **Multi-year requirement**: Data must span at least 2 years to detect repeating patterns
+2. **Seasonal coverage**: Need at least 3 seasons with 2+ data points each
+3. **Variance test**: Between-season variance > within-season variance × 2
+4. **Per-season trends**: Calculate trend for each season if 3+ years available
+
+**Algorithm steps:**
+```python
+# 1. Group data by season AND year
+seasonal_data = {
+    'winter': {2024: [...], 2025: [...]},
+    'spring': {2024: [...], 2025: [...]}
+}
+
+# 2. Calculate between-season variance
+# (How different are seasons from each other?)
+between_variance = var([winter_avg, spring_avg, summer_avg, fall_avg])
+
+# 3. Calculate within-season variance
+# (How consistent is each season across years?)
+within_variance = avg([var(all_winters), var(all_springs), ...])
+
+# 4. Detect if seasons differ more than noise
+if between_variance > within_variance * 2:
+    detected = True
+
+# 5. Calculate per-season trends across years
+# E.g., "Are winters getting warmer?"
+if 3+ years for season:
+    trend = linear_regression(yearly_averages)
+```
+
+**Our sample data:**
+- Spans only Jan-Feb 2025 (single year)
+- Fails multi-year requirement → returns `detected: false`
+- But implementation is complete and ready for sufficient data
+
+**Example output with sufficient data:**
+```json
+{
+  "detected": true,
+  "period": "yearly",
+  "confidence": 0.92,
+  "pattern": {
+    "winter": {"avg": 5.2, "trend": "stable"},
+    "spring": {"avg": 15.7, "trend": "increasing"},
+    "summer": {"avg": 25.3, "trend": "increasing"},
+    "fall": {"avg": 18.1, "trend": "stable"}
+  }
+}
+```
 
 ---
 
