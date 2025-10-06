@@ -202,17 +202,119 @@ def get_summary():
     
     Returns weighted min, max, and avg values for each metric in the format specified in the API docs.
     """
-    # TODO: Implement this endpoint
-    # 1. Get query parameters from request.args
-    # 2. Validate quality_threshold if provided
-    # 3. Get list of metrics to summarize
-    # 4. For each metric:
-    #    - Calculate quality-weighted statistics using QUALITY_WEIGHTS
-    #    - Calculate quality distribution
-    #    - Apply proper filtering
-    # 5. Format response according to API specification
+    # STEP 1: Extract query parameters (same as /climate endpoint)
+    location_id = request.args.get('location_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    metric = request.args.get('metric')
+    quality_threshold = request.args.get('quality_threshold')
     
-    return jsonify({"data": {}})
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    # STEP 2: Build SQL query to fetch raw data
+    # We only need: metric name, unit, value, and quality
+    # The filtering logic is identical to /climate
+    query = """
+        SELECT 
+            m.name as metric,
+            m.unit,
+            cd.value,
+            cd.quality
+        FROM climate_data cd
+        JOIN metrics m ON cd.metric_id = m.id
+        WHERE 1=1
+    """
+    params = []
+    
+    # Apply same filters as /climate endpoint
+    if location_id:
+        query += " AND cd.location_id = %s"
+        params.append(location_id)
+    if metric:
+        query += " AND m.name = %s"
+        params.append(metric)
+    if start_date:
+        query += " AND cd.date >= %s"
+        params.append(start_date)
+    if end_date:
+        query += " AND cd.date <= %s"
+        params.append(end_date)
+    
+    # Quality threshold filter (inclusive - "good" includes "good" and "excellent")
+    if quality_threshold:
+        quality_map = {
+            'poor': ['poor', 'questionable', 'good', 'excellent'],
+            'questionable': ['questionable', 'good', 'excellent'],
+            'good': ['good', 'excellent'],
+            'excellent': ['excellent']
+        }
+        allowed_qualities = quality_map.get(quality_threshold.lower())
+        if allowed_qualities:
+            placeholders = ', '.join(['%s'] * len(allowed_qualities))
+            query += f" AND cd.quality IN ({placeholders})"
+            params.extend(allowed_qualities)
+    
+    # STEP 3: Execute query and fetch all matching rows
+    cursor.execute(query, tuple(params))
+    rows = cursor.fetchall()
+    cursor.close()
+    
+    # STEP 4: Group data by metric
+    # We'll use a dictionary to collect all values and qualities for each metric
+    from collections import defaultdict
+    
+    metrics_data = defaultdict(lambda: {
+        'values': [],      # List of all values for this metric
+        'qualities': [],   # List of corresponding quality levels
+        'unit': None       # Unit (same for all rows of this metric)
+    })
+    
+    for row in rows:
+        metric_name = row['metric']
+        metrics_data[metric_name]['values'].append(float(row['value']))
+        metrics_data[metric_name]['qualities'].append(row['quality'])
+        metrics_data[metric_name]['unit'] = row['unit']  # Set unit (overwrites with same value)
+    
+    # STEP 5: Calculate statistics for each metric
+    result = {}
+    
+    for metric_name, data in metrics_data.items():
+        values = data['values']
+        qualities = data['qualities']
+        
+        # If no data for this metric, skip it
+        if not values:
+            continue
+        
+        # Basic statistics
+        result[metric_name] = {
+            'min': min(values),
+            'max': max(values),
+            'avg': sum(values) / len(values),
+            'unit': data['unit']
+        }
+        
+        # Weighted average calculation
+        # Formula: SUM(value * weight) / SUM(weight)
+        weighted_sum = sum(v * QUALITY_WEIGHTS[q] for v, q in zip(values, qualities))
+        weight_sum = sum(QUALITY_WEIGHTS[q] for q in qualities)
+        result[metric_name]['weighted_avg'] = weighted_sum / weight_sum
+        
+        # Quality distribution (what percentage of data is each quality level)
+        from collections import Counter
+        quality_counts = Counter(qualities)
+        total = len(qualities)
+        
+        # Always include all quality levels (even if 0)
+        result[metric_name]['quality_distribution'] = {
+            'excellent': quality_counts.get('excellent', 0) / total,
+            'good': quality_counts.get('good', 0) / total,
+            'questionable': quality_counts.get('questionable', 0) / total,
+            'poor': quality_counts.get('poor', 0) / total
+        }
+    
+    # STEP 6: Return formatted response
+    return jsonify({'data': result})
 
 @app.route('/api/v1/trends', methods=['GET'])
 def get_trends():

@@ -157,6 +157,104 @@ def run_tests():
     ):
         tests_passed += 1
     
+    print()
+    print("--- Testing /api/v1/summary endpoint ---")
+    print()
+    
+    # Test 9: Summary endpoint - no filters (all data)
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary (no filters)",
+        f"{BASE_URL}/summary",
+        assertions={
+            "has data key": lambda d: 'data' in d,
+            "has temperature": lambda d: 'temperature' in d['data'],
+            "has precipitation": lambda d: 'precipitation' in d['data'],
+            "temp has all stats": lambda d: all(
+                k in d['data']['temperature'] 
+                for k in ['min', 'max', 'avg', 'weighted_avg', 'unit', 'quality_distribution']
+            ),
+            "quality dist has all levels": lambda d: all(
+                k in d['data']['temperature']['quality_distribution']
+                for k in ['excellent', 'good', 'questionable', 'poor']
+            )
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 10: Summary endpoint - location filter
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?location_id=1",
+        f"{BASE_URL}/summary?location_id=1",
+        assertions={
+            "has temperature and precipitation": lambda d: 
+                'temperature' in d['data'] and 'precipitation' in d['data'],
+            "temp avg is Irvine-specific": lambda d: 
+                20 < d['data']['temperature']['avg'] < 25,  # Irvine is warmer
+            "precip avg is Irvine-specific": lambda d:
+                d['data']['precipitation']['avg'] < 10  # Irvine is drier
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 11: Summary endpoint - metric filter
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?metric=temperature",
+        f"{BASE_URL}/summary?metric=temperature",
+        assertions={
+            "only temperature": lambda d: 
+                'temperature' in d['data'] and 'precipitation' not in d['data'],
+            "has weighted_avg": lambda d: 'weighted_avg' in d['data']['temperature']
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 12: Summary endpoint - weighted_avg differs from avg
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?metric=temperature",
+        f"{BASE_URL}/summary?metric=temperature",
+        assertions={
+            "weighted_avg exists": lambda d: 'weighted_avg' in d['data']['temperature'],
+            "weighted_avg is a number": lambda d: 
+                isinstance(d['data']['temperature']['weighted_avg'], (int, float)),
+            "weighted_avg differs from avg": lambda d:
+                d['data']['temperature']['weighted_avg'] != d['data']['temperature']['avg']
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 13: Summary endpoint - quality distribution sums to 1.0
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?metric=temperature",
+        f"{BASE_URL}/summary?metric=temperature",
+        assertions={
+            "quality dist sums to ~1.0": lambda d: 
+                abs(sum(d['data']['temperature']['quality_distribution'].values()) - 1.0) < 0.01
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 14: Summary endpoint - quality threshold filter
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?location_id=1&metric=temperature&quality_threshold=good",
+        f"{BASE_URL}/summary?location_id=1&metric=temperature&quality_threshold=good",
+        assertions={
+            "has temperature": lambda d: 'temperature' in d['data'],
+            "no poor or questionable": lambda d:
+                d['data']['temperature']['quality_distribution']['poor'] == 0 and
+                d['data']['temperature']['quality_distribution']['questionable'] == 0,
+            "has excellent and good": lambda d:
+                d['data']['temperature']['quality_distribution']['excellent'] > 0 and
+                d['data']['temperature']['quality_distribution']['good'] > 0
+        }
+    ):
+        tests_passed += 1
+    
     # Print summary
     print()
     print("=" * 60)
