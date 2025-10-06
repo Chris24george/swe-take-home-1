@@ -255,6 +255,104 @@ def run_tests():
     ):
         tests_passed += 1
     
+    print()
+    print("--- Testing /api/v1/trends endpoint ---")
+    print()
+    
+    # Test 15: Trends endpoint - no filters (all metrics)
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (no filters)",
+        f"{BASE_URL}/trends",
+        assertions={
+            "has data key": lambda d: 'data' in d,
+            "has temperature": lambda d: 'temperature' in d['data'],
+            "has precipitation": lambda d: 'precipitation' in d['data'],
+            "temp has trend": lambda d: 'trend' in d['data']['temperature'],
+            "temp has anomalies": lambda d: 'anomalies' in d['data']['temperature'],
+            "temp has seasonality": lambda d: 'seasonality' in d['data']['temperature']
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 16: Trends endpoint - trend structure validation
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (trend structure)",
+        f"{BASE_URL}/trends?metric=temperature",
+        assertions={
+            "has direction": lambda d: 
+                'direction' in d['data']['temperature']['trend'],
+            "has rate": lambda d:
+                'rate' in d['data']['temperature']['trend'],
+            "has confidence": lambda d:
+                'confidence' in d['data']['temperature']['trend'],
+            "direction is valid": lambda d:
+                d['data']['temperature']['trend']['direction'] in 
+                ['increasing', 'decreasing', 'stable', 'insufficient_data'],
+            "confidence between 0-1": lambda d:
+                0 <= d['data']['temperature']['trend']['confidence'] <= 1
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 17: Trends endpoint - anomaly detection
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (anomalies)",
+        f"{BASE_URL}/trends?location_id=1&metric=temperature",
+        assertions={
+            "anomalies is list": lambda d:
+                isinstance(d['data']['temperature']['anomalies'], list),
+            "anomaly has required fields": lambda d:
+                len(d['data']['temperature']['anomalies']) == 0 or
+                all(k in d['data']['temperature']['anomalies'][0] 
+                    for k in ['date', 'value', 'deviation', 'quality'])
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 18: Trends endpoint - seasonality is false for limited data
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (seasonality)",
+        f"{BASE_URL}/trends?metric=temperature",
+        assertions={
+            "seasonality detected is false": lambda d:
+                d['data']['temperature']['seasonality']['detected'] == False,
+            "seasonality has confidence": lambda d:
+                'confidence' in d['data']['temperature']['seasonality']
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 19: Trends endpoint - location filter
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends?location_id=1",
+        f"{BASE_URL}/trends?location_id=1",
+        assertions={
+            "has data": lambda d: 'data' in d,
+            "has at least one metric": lambda d: len(d['data']) > 0
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 20: Trends endpoint - quality threshold filter
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends?quality_threshold=good",
+        f"{BASE_URL}/trends?quality_threshold=good&metric=temperature",
+        assertions={
+            "has temperature": lambda d: 'temperature' in d['data'],
+            "anomalies only good+": lambda d:
+                len(d['data']['temperature']['anomalies']) == 0 or
+                all(a['quality'] in ['good', 'excellent'] 
+                    for a in d['data']['temperature']['anomalies'])
+        }
+    ):
+        tests_passed += 1
+    
     # Print summary
     print()
     print("=" * 60)
