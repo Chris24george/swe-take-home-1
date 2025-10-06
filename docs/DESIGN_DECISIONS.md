@@ -315,7 +315,7 @@ services:
 
 ## API Implementation
 
-**Status:** 3/5 endpoints complete ✅
+**Status:** 4/5 endpoints complete ✅
 **Date:** 2025-10-06
 
 ### Completed Endpoints:
@@ -331,7 +331,7 @@ services:
 - No filtering required
 
 #### 3. `/api/v1/climate` ✅
-- **Most complex endpoint** with dynamic filtering
+- Complex endpoint with dynamic filtering
 - Supports 5 optional query parameters:
   - `location_id` - Filter by location
   - `metric` - Filter by metric name (temperature/precipitation/humidity)
@@ -340,6 +340,19 @@ services:
   - `quality_threshold` - Minimum quality level (poor/questionable/good/excellent)
 - Returns enriched data with joins (location names, metric details)
 - Ordered by date for time-series visualization
+
+#### 4. `/api/v1/summary` ✅
+- **Quality-weighted statistical aggregations** grouped by metric
+- Supports same 5 filter parameters as `/climate`
+- Returns per-metric statistics:
+  - `min` / `max` / `avg` - Simple statistics
+  - `weighted_avg` - Quality-weighted average using `QUALITY_WEIGHTS`
+  - `quality_distribution` - Percentage breakdown by quality level
+  - `unit` - Measurement unit
+- **Implementation approach**: Python-heavy (fetch filtered data, calculate in Python)
+  - Simpler, more maintainable code vs complex SQL aggregations
+  - Easy to modify weights or add new calculations
+  - Performance fine for dataset size (40 rows)
 
 ### Implementation Decisions:
 
@@ -394,24 +407,37 @@ row['date'] = str(row['date'])  # "2025-01-15"
 - MySQL date → string in ISO format (YYYY-MM-DD)
 - No precision loss for our use case (3 decimal places max)
 
-### Pending Endpoints:
+**5. Weighted Average Calculation** (for `/summary` endpoint)
+```python
+# Given readings with different quality levels:
+values = [22.5, 21.8, 29.5]
+qualities = ['excellent', 'good', 'questionable']
 
-#### 4. `/api/v1/summary` (TODO)
-- Aggregations with quality-weighted calculations
-- GROUP BY location/metric
-- Weighted averages using quality weights:
-  ```python
-  QUALITY_WEIGHTS = {
-      'excellent': 1.0,
-      'good': 0.8,
-      'questionable': 0.5,
-      'poor': 0.3
-  }
-  ```
+# Simple average (treats all readings equally):
+avg = sum(values) / len(values) = 24.6°C
+
+# Weighted average (trusts high-quality readings more):
+weighted_sum = (22.5 × 1.0) + (21.8 × 0.8) + (29.5 × 0.5) = 54.69
+weight_sum = 1.0 + 0.8 + 0.5 = 2.3
+weighted_avg = 54.69 / 2.3 = 23.78°C  # Lower! Discounts the questionable reading
+```
+
+**Why this matters:**
+- Mixed quality data can skew simple averages
+- Weighted average provides more trustworthy summary statistics
+- Outliers from poor-quality sensors have less impact
+- Example: 10 excellent readings (18°C) + 1 poor outlier (30°C)
+  - Simple avg: misleadingly high
+  - Weighted avg: properly discounts the outlier
+
+### Pending Endpoints:
 
 #### 5. `/api/v1/trends` (TODO)
 - Statistical analysis (trend detection, anomaly identification, seasonality)
-- More Python-heavy calculations (vs SQL aggregations)
+- Calculate trend direction and slope
+- Identify anomalies (values > 2 standard deviations from mean)
+- Detect seasonal patterns if sufficient data
+- More Python-heavy statistical calculations
 
 ---
 
@@ -433,9 +459,10 @@ row['date'] = str(row['date'])  # "2025-01-15"
   ```
 
 **2. Automated Test Script (`backend/test_basic.py`)**
-- 8 comprehensive tests covering all implemented endpoints
+- **14 comprehensive tests** covering all implemented endpoints
 - Tests various filter combinations and edge cases
 - Validates response structure and data accuracy
+- Verifies weighted average calculations
 - Uses Python `requests` library
 - Run with: `python3 backend/test_basic.py`
 
@@ -443,12 +470,22 @@ row['date'] = str(row['date'])  # "2025-01-15"
 ```
 ✅ GET /api/v1/locations
 ✅ GET /api/v1/metrics
-✅ GET /api/v1/climate (no filters - 40 records)
-✅ GET /api/v1/climate?location_id=1 (16 records)
-✅ GET /api/v1/climate?metric=temperature
-✅ GET /api/v1/climate?location_id=1&metric=temperature (8 records)
-✅ GET /api/v1/climate?start_date=2025-02-01&end_date=2025-03-31 (20 records)
-✅ GET /api/v1/climate?quality_threshold=good (29 records)
+
+/api/v1/climate endpoint (8 tests):
+✅ No filters (40 records)
+✅ Location filter (16 records)
+✅ Metric filter
+✅ Location + metric filter (8 records)
+✅ Date range filter (20 records)
+✅ Quality threshold filter (29 records)
+
+/api/v1/summary endpoint (6 tests):
+✅ No filters (response structure validation)
+✅ Location filter (Irvine-specific stats)
+✅ Metric filter (temperature only)
+✅ Weighted avg differs from simple avg
+✅ Quality distribution sums to 1.0
+✅ Quality threshold filter works correctly
 ```
 
 ### Rationale:
