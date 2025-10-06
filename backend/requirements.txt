@@ -1,0 +1,11 @@
+# Flask and CORS
+Flask==3.0.0
+Flask-CORS==4.0.0
+
+# MySQL database connector
+Flask-MySQLdb==2.0.0
+mysqlclient==2.2.0
+
+# Environment variable management (optional but recommended)
+python-dotenv==1.0.0
+

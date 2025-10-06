@@ -7,13 +7,23 @@ from flask_cors import CORS
 from flask_mysqldb import MySQL
 import os
 
+# Load environment variables from .env file if available
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # python-dotenv not installed, will use system environment variables
+    pass
+
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # MySQL Configuration
+# Defaults work out-of-the-box for standard local MySQL setup
+# Override via .env file or system environment variables if needed
 app.config['MYSQL_HOST'] = os.environ.get('MYSQL_HOST', 'localhost')
 app.config['MYSQL_USER'] = os.environ.get('MYSQL_USER', 'root')
-app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQL_PASSWORD', '')
+app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQL_PASSWORD', '')  # Empty for no password
 app.config['MYSQL_DB'] = os.environ.get('MYSQL_DB', 'climate_data')
 mysql = MySQL(app)
 
