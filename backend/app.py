@@ -44,14 +44,100 @@ def get_climate_data():
     
     Returns climate data in the format specified in the API docs.
     """
-    # TODO: Implement this endpoint
-    # 1. Get query parameters from request.args
-    # 2. Validate quality_threshold if provided
-    # 3. Build and execute SQL query with proper JOINs and filtering
-    # 4. Apply quality threshold filtering
-    # 5. Format response according to API specification
+    # Get query parameters (all optional)
+    location_id = request.args.get('location_id')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    metric = request.args.get('metric')
+    quality_threshold = request.args.get('quality_threshold')
     
-    return jsonify({"data": [], "meta": {"total_count": 0, "page": 1, "per_page": 50}})
+    # Create cursor that returns dictionaries
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    
+    # Base query with JOINs across all three tables
+    query = """
+        SELECT 
+            cd.id,
+            cd.location_id,
+            l.name as location_name,
+            l.latitude,
+            l.longitude,
+            cd.date,
+            m.name as metric,
+            cd.value,
+            m.unit,
+            cd.quality
+        FROM climate_data cd
+        JOIN locations l ON cd.location_id = l.id
+        JOIN metrics m ON cd.metric_id = m.id
+        WHERE 1=1
+    """
+    
+    # List to hold parameter values for safe parameterized query
+    params = []
+    
+    # Add optional filters based on provided parameters
+    if location_id:
+        query += " AND cd.location_id = %s"
+        params.append(location_id)
+    
+    if metric:
+        query += " AND m.name = %s"
+        params.append(metric)
+    
+    if start_date:
+        query += " AND cd.date >= %s"
+        params.append(start_date)
+    
+    if end_date:
+        query += " AND cd.date <= %s"
+        params.append(end_date)
+    
+    # Handle quality threshold (minimum quality level)
+    if quality_threshold:
+        # Quality hierarchy: poor < questionable < good < excellent
+        quality_map = {
+            'poor': ['poor', 'questionable', 'good', 'excellent'],
+            'questionable': ['questionable', 'good', 'excellent'],
+            'good': ['good', 'excellent'],
+            'excellent': ['excellent']
+        }
+        
+        allowed_qualities = quality_map.get(quality_threshold.lower())
+        if allowed_qualities:
+            # Create placeholders for IN clause: (%s, %s, ...)
+            placeholders = ', '.join(['%s'] * len(allowed_qualities))
+            query += f" AND cd.quality IN ({placeholders})"
+            params.extend(allowed_qualities)
+    
+    # Add ordering by date
+    query += " ORDER BY cd.date"
+    
+    # Execute query with parameters
+    cursor.execute(query, tuple(params))
+    data = cursor.fetchall()
+    cursor.close()
+    
+    # Convert data types for JSON serialization
+    for row in data:
+        # Convert Decimal to float
+        row['latitude'] = float(row['latitude'])
+        row['longitude'] = float(row['longitude'])
+        row['value'] = float(row['value'])
+        # Convert date to string
+        row['date'] = str(row['date'])
+    
+    # Build response with meta information
+    response = {
+        'data': data,
+        'meta': {
+            'total_count': len(data),
+            'page': 1,
+            'per_page': 50
+        }
+    }
+    
+    return jsonify(response)
 
 @app.route('/api/v1/locations', methods=['GET'])
 def get_locations():
