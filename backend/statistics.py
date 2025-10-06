@@ -38,8 +38,27 @@ def calculate_trend(data):
     date_objects = [datetime.strptime(str(d), '%Y-%m-%d') for d in dates]
     days_since_start = [(d - date_objects[0]).days for d in date_objects]
     
+    # Check if all dates are the same (can't fit a line through vertical points)
+    if len(set(days_since_start)) == 1:
+        return {
+            'direction': 'insufficient_data',
+            'rate': 0.0,
+            'unit': f'{unit}/month',
+            'confidence': 0.0
+        }
+    
     # Linear regression: y = mx + b (returns [slope, intercept])
-    coefficients = np.polyfit(days_since_start, values, 1)
+    # Wrap in try-except to handle edge cases where SVD fails
+    try:
+        coefficients = np.polyfit(days_since_start, values, 1)
+    except np.linalg.LinAlgError:
+        # Numerical instability (e.g., nearly identical dates)
+        return {
+            'direction': 'insufficient_data',
+            'rate': 0.0,
+            'unit': f'{unit}/month',
+            'confidence': 0.0
+        }
     slope = coefficients[0]  # Rate of change per day
     
     # Calculate R² (coefficient of determination) for confidence

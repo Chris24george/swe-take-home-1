@@ -157,11 +157,44 @@ def run_tests():
     ):
         tests_passed += 1
     
+    # Test 9: Climate endpoint - non-existent location
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/climate?location_id=999 (non-existent)",
+        f"{BASE_URL}/climate?location_id=999",
+        assertions={
+            "returns empty data": lambda d: d['meta']['total_count'] == 0 and len(d['data']) == 0
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 10: Climate endpoint - non-existent metric
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/climate?metric=nonexistent",
+        f"{BASE_URL}/climate?metric=nonexistent",
+        assertions={
+            "returns empty data": lambda d: d['meta']['total_count'] == 0 and len(d['data']) == 0
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 11: Climate endpoint - invalid date range
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/climate (invalid date range)",
+        f"{BASE_URL}/climate?start_date=2025-03-31&end_date=2025-01-01",
+        assertions={
+            "returns empty data": lambda d: d['meta']['total_count'] == 0
+        }
+    ):
+        tests_passed += 1
+    
     print()
     print("--- Testing /api/v1/summary endpoint ---")
     print()
     
-    # Test 9: Summary endpoint - no filters (all data)
+    # Test 12: Summary endpoint - no filters (all data)
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary (no filters)",
@@ -182,7 +215,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 10: Summary endpoint - location filter
+    # Test 13: Summary endpoint - location filter
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary?location_id=1",
@@ -198,7 +231,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 11: Summary endpoint - metric filter
+    # Test 14: Summary endpoint - metric filter
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary?metric=temperature",
@@ -211,7 +244,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 12: Summary endpoint - weighted_avg differs from avg
+    # Test 15: Summary endpoint - weighted_avg differs from avg
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary?metric=temperature",
@@ -226,7 +259,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 13: Summary endpoint - quality distribution sums to 1.0
+    # Test 16: Summary endpoint - quality distribution sums to 1.0
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary?metric=temperature",
@@ -238,7 +271,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 14: Summary endpoint - quality threshold filter
+    # Test 17: Summary endpoint - quality threshold filter
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/summary?location_id=1&metric=temperature&quality_threshold=good",
@@ -255,11 +288,44 @@ def run_tests():
     ):
         tests_passed += 1
     
+    # Test 18: Summary endpoint - non-existent location
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?location_id=999 (non-existent)",
+        f"{BASE_URL}/summary?location_id=999",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 19: Summary endpoint - non-existent metric
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary?metric=nonexistent",
+        f"{BASE_URL}/summary?metric=nonexistent",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 20: Summary endpoint - invalid date range
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/summary (invalid date range)",
+        f"{BASE_URL}/summary?start_date=2025-03-31&end_date=2025-01-01",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
     print()
     print("--- Testing /api/v1/trends endpoint ---")
     print()
     
-    # Test 15: Trends endpoint - no filters (all metrics)
+    # Test 21: Trends endpoint - no filters (all metrics)
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends (no filters)",
@@ -275,7 +341,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 16: Trends endpoint - trend structure validation
+    # Test 22: Trends endpoint - trend structure validation
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends (trend structure)",
@@ -296,7 +362,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 17: Trends endpoint - anomaly detection
+    # Test 23: Trends endpoint - anomaly detection
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends (anomalies)",
@@ -312,7 +378,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 18: Trends endpoint - seasonality is false for limited data
+    # Test 24: Trends endpoint - seasonality is false for limited data
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends (seasonality)",
@@ -326,7 +392,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 19: Trends endpoint - location filter
+    # Test 25: Trends endpoint - location filter
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends?location_id=1",
@@ -338,7 +404,7 @@ def run_tests():
     ):
         tests_passed += 1
     
-    # Test 20: Trends endpoint - quality threshold filter
+    # Test 26: Trends endpoint - quality threshold filter
     tests_total += 1
     if test_endpoint(
         "GET /api/v1/trends?quality_threshold=good",
@@ -349,6 +415,70 @@ def run_tests():
                 len(d['data']['temperature']['anomalies']) == 0 or
                 all(a['quality'] in ['good', 'excellent'] 
                     for a in d['data']['temperature']['anomalies'])
+        }
+    ):
+        tests_passed += 1
+    
+    print()
+    print("--- Testing edge cases ---")
+    print()
+    
+    # Test 27: Narrow date range (insufficient data)
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (narrow date range)",
+        f"{BASE_URL}/trends?start_date=2025-02-01&end_date=2025-02-07",
+        assertions={
+            "has data key": lambda d: 'data' in d,
+            "temperature has insufficient_data": lambda d:
+                'temperature' in d['data'] and
+                d['data']['temperature']['trend']['direction'] == 'insufficient_data'
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 28: Non-existent location
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends?location_id=999 (non-existent)",
+        f"{BASE_URL}/trends?location_id=999",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 29: Non-existent metric
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends?metric=nonexistent",
+        f"{BASE_URL}/trends?metric=nonexistent",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 30: Invalid date range (end before start)
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (invalid date range)",
+        f"{BASE_URL}/trends?start_date=2025-03-31&end_date=2025-01-01",
+        assertions={
+            "returns empty data": lambda d: d['data'] == {}
+        }
+    ):
+        tests_passed += 1
+    
+    # Test 31: Only 2 data points
+    tests_total += 1
+    if test_endpoint(
+        "GET /api/v1/trends (only 2 points)",
+        f"{BASE_URL}/trends?location_id=2&metric=temperature&start_date=2025-01-01&end_date=2025-01-15",
+        assertions={
+            "has insufficient_data": lambda d:
+                'temperature' in d['data'] and
+                d['data']['temperature']['trend']['direction'] == 'insufficient_data'
         }
     ):
         tests_passed += 1
