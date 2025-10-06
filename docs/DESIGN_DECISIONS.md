@@ -558,8 +558,8 @@ if 3+ years for season:
   ```
 
 **2. Automated Test Script (`backend/test_basic.py`)**
-- **20 comprehensive tests** covering ALL 5 endpoints
-- Tests various filter combinations and edge cases
+- **31 comprehensive tests** covering ALL 5 endpoints + edge cases
+- Tests various filter combinations, edge cases, and error handling
 - Validates response structure and data accuracy
 - Verifies weighted averages, trend detection, and anomaly identification
 - Uses Python `requests` library
@@ -567,32 +567,43 @@ if 3+ years for season:
 
 **Test Coverage:**
 ```
-✅ GET /api/v1/locations
-✅ GET /api/v1/metrics
+✅ GET /api/v1/locations (1 test)
+✅ GET /api/v1/metrics (1 test)
 
-/api/v1/climate endpoint (8 tests):
+/api/v1/climate endpoint (11 tests):
 ✅ No filters (40 records)
 ✅ Location filter (16 records)
 ✅ Metric filter
 ✅ Location + metric filter (8 records)
 ✅ Date range filter (20 records)
 ✅ Quality threshold filter (29 records)
+✅ Non-existent location (empty result)
+✅ Non-existent metric (empty result)
+✅ Invalid date range (empty result)
 
-/api/v1/summary endpoint (6 tests):
+/api/v1/summary endpoint (9 tests):
 ✅ No filters (response structure validation)
 ✅ Location filter (Irvine-specific stats)
 ✅ Metric filter (temperature only)
 ✅ Weighted avg differs from simple avg
 ✅ Quality distribution sums to 1.0
 ✅ Quality threshold filter works correctly
+✅ Non-existent location (empty result)
+✅ Non-existent metric (empty result)
+✅ Invalid date range (empty result)
 
-/api/v1/trends endpoint (6 tests):
+/api/v1/trends endpoint (11 tests):
 ✅ No filters (all metrics with trend/anomalies/seasonality)
 ✅ Trend structure validation (direction, rate, confidence)
 ✅ Anomaly detection (deviation > 2σ)
 ✅ Seasonality returns false for insufficient data
 ✅ Location filter works correctly
 ✅ Quality threshold filter works correctly
+✅ Narrow date range (insufficient_data)
+✅ Non-existent location (empty result)
+✅ Non-existent metric (empty result)
+✅ Invalid date range (empty result)
+✅ Only 2 data points (insufficient_data)
 ```
 
 ### Rationale:
@@ -608,6 +619,117 @@ if 3+ years for season:
 - Deterministic sample data
 - Focus on functionality over test coverage metrics
 - Demonstrates software quality awareness without over-engineering
+
+---
+
+## Code Refactoring & Modularity
+
+**Decision:** Extract reusable logic into separate modules
+**Date:** 2025-10-06
+
+### Modules Created:
+
+**1. `backend/filters.py`** - Centralized filter logic
+```python
+def extract_filter_params(request_obj):
+    """Extracts common filter parameters from Flask request"""
+    
+def build_climate_filters(query, params, **filters):
+    """Applies filters to SQL query with parameterized values"""
+```
+
+**Benefits:**
+- ✅ **DRY principle**: Filter logic used across `/climate`, `/summary`, `/trends`
+- ✅ **Maintainability**: Single source of truth for filter behavior
+- ✅ **Testability**: Can test filter logic independently
+- ✅ **Readability**: Endpoint code focuses on business logic, not SQL building
+
+**2. `backend/statistics.py`** - Statistical analysis functions
+```python
+def calculate_trend(data):
+    """Linear regression with R² confidence scoring"""
+    
+def detect_anomalies(data):
+    """Standard deviation-based outlier detection"""
+    
+def detect_seasonality(data):
+    """Multi-year seasonal pattern analysis"""
+```
+
+**Benefits:**
+- ✅ **Separation of concerns**: Stats logic separate from API layer
+- ✅ **Reusability**: Can use in other endpoints or scripts
+- ✅ **Testability**: Statistical algorithms can be unit tested
+- ✅ **Complexity management**: `app.py` stays focused on routing/HTTP
+
+### Impact:
+
+**Before refactoring:**
+- `app.py`: ~400 lines, mixing routing, SQL, and statistics
+
+**After refactoring:**
+- `app.py`: ~360 lines (routing and orchestration only)
+- `filters.py`: ~85 lines (reusable filter logic)
+- `statistics.py`: ~300 lines (statistical algorithms)
+
+**Result:** More maintainable, testable, and professional code structure.
+
+---
+
+## Edge Case Handling & Bug Fixes
+
+**Date:** 2025-10-06
+
+### Critical Bug Fix: Numpy LinAlgError
+
+**Issue:** When all data points fall on the same date, linear regression fails:
+```python
+days_since_start = [0, 0, 0, 0]  # All same date!
+np.polyfit(days_since_start, values, 1)  # ❌ SVD did not converge
+```
+
+**Solution:**
+```python
+# Check if all dates are identical
+if len(set(days_since_start)) == 1:
+    return {'direction': 'insufficient_data', ...}
+
+# Wrap in try-except for numerical instability
+try:
+    coefficients = np.polyfit(days_since_start, values, 1)
+except np.linalg.LinAlgError:
+    return {'direction': 'insufficient_data', ...}
+```
+
+**Testing:** Added edge case test for narrow date ranges that trigger this condition.
+
+### Edge Cases Handled:
+
+**1. Non-existent Resources**
+- Non-existent `location_id` → Returns empty data `{}`
+- Non-existent `metric` → Returns empty data `{}`
+- Graceful degradation, no 404 errors
+
+**2. Invalid Input**
+- `end_date` before `start_date` → Returns empty data (SQL naturally handles)
+- Invalid quality threshold → Ignored (not in quality_map)
+
+**3. Insufficient Data for Statistics**
+- < 3 data points → `direction: 'insufficient_data'`
+- All dates identical → `direction: 'insufficient_data'`
+- Single year of data → `seasonality: {detected: false}`
+
+**4. Numerical Stability**
+- Zero standard deviation (all identical values) → No anomalies detected
+- LinAlgError in polyfit → Caught and handled gracefully
+
+### Testing Philosophy:
+
+**Production-ready error handling:**
+- ✅ Never crash on unexpected input
+- ✅ Return meaningful responses for edge cases
+- ✅ Honest reporting of insufficient data
+- ✅ Graceful degradation over errors
 
 ---
 
