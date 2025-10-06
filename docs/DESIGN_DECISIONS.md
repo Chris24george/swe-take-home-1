@@ -315,7 +315,7 @@ services:
 
 ## API Implementation
 
-**Status:** 4/5 endpoints complete ✅
+**Status:** 5/5 endpoints complete ✅ **BACKEND COMPLETE!**
 **Date:** 2025-10-06
 
 ### Completed Endpoints:
@@ -353,6 +353,19 @@ services:
   - Simpler, more maintainable code vs complex SQL aggregations
   - Easy to modify weights or add new calculations
   - Performance fine for dataset size (40 rows)
+
+#### 5. `/api/v1/trends` ✅
+- **Statistical trend analysis** using numpy for calculations
+- Supports same 5 filter parameters as other endpoints
+- Returns per-metric analysis:
+  - **Trend detection**: Linear regression with R² confidence
+  - **Anomaly detection**: Identifies outliers > 2 standard deviations
+  - **Seasonality detection**: Framework ready (returns false for insufficient data)
+- **Implementation approach**: Python + numpy for statistical analysis
+  - `numpy.polyfit()` for linear regression
+  - R² (coefficient of determination) for confidence scoring
+  - Standard deviation-based anomaly detection
+  - Honest handling of insufficient data for seasonality
 
 ### Implementation Decisions:
 
@@ -430,14 +443,50 @@ weighted_avg = 54.69 / 2.3 = 23.78°C  # Lower! Discounts the questionable readi
   - Simple avg: misleadingly high
   - Weighted avg: properly discounts the outlier
 
-### Pending Endpoints:
+**6. Trend Analysis with Linear Regression** (for `/trends` endpoint)
+```python
+# Convert dates to numeric (days since start)
+date_objects = [datetime.strptime(str(d), '%Y-%m-%d') for d in dates]
+days_since_start = [(d - date_objects[0]).days for d in date_objects]
 
-#### 5. `/api/v1/trends` (TODO)
-- Statistical analysis (trend detection, anomaly identification, seasonality)
-- Calculate trend direction and slope
-- Identify anomalies (values > 2 standard deviations from mean)
-- Detect seasonal patterns if sufficient data
-- More Python-heavy statistical calculations
+# Linear regression: fit line y = mx + b
+coefficients = np.polyfit(days_since_start, values, 1)
+slope = coefficients[0]  # Rate of change per day
+
+# Calculate R² (goodness of fit)
+y_pred = np.polyval(coefficients, days_since_start)
+ss_res = np.sum((values - y_pred) ** 2)  # Residual sum of squares
+ss_tot = np.sum((values - np.mean(values)) ** 2)  # Total sum of squares
+r_squared = 1 - (ss_res / ss_tot)  # Higher = better fit
+
+# Determine direction
+if abs(slope) < 0.01:
+    direction = 'stable'
+elif slope > 0:
+    direction = 'increasing'
+else:
+    direction = 'decreasing'
+
+# Convert to per-month rate
+rate_per_month = slope * 30
+```
+
+**Anomaly Detection:**
+```python
+mean = np.mean(values)
+std_dev = np.std(values)
+
+for date, value, quality in zip(dates, values, qualities):
+    deviation = abs(value - mean) / std_dev
+    if deviation > 2.0:  # Threshold from API spec
+        # Flag as anomaly with deviation score
+```
+
+**Seasonality Limitation:**
+- Our sample data spans only ~6 weeks (Jan-Feb 2025)
+- Requires minimum 6-12 months for meaningful seasonal pattern detection
+- Returns `detected: false` honestly rather than generating misleading patterns
+- Framework ready for future data: group by season, calculate averages, detect patterns
 
 ---
 
@@ -459,10 +508,10 @@ weighted_avg = 54.69 / 2.3 = 23.78°C  # Lower! Discounts the questionable readi
   ```
 
 **2. Automated Test Script (`backend/test_basic.py`)**
-- **14 comprehensive tests** covering all implemented endpoints
+- **20 comprehensive tests** covering ALL 5 endpoints
 - Tests various filter combinations and edge cases
 - Validates response structure and data accuracy
-- Verifies weighted average calculations
+- Verifies weighted averages, trend detection, and anomaly identification
 - Uses Python `requests` library
 - Run with: `python3 backend/test_basic.py`
 
@@ -485,6 +534,14 @@ weighted_avg = 54.69 / 2.3 = 23.78°C  # Lower! Discounts the questionable readi
 ✅ Metric filter (temperature only)
 ✅ Weighted avg differs from simple avg
 ✅ Quality distribution sums to 1.0
+✅ Quality threshold filter works correctly
+
+/api/v1/trends endpoint (6 tests):
+✅ No filters (all metrics with trend/anomalies/seasonality)
+✅ Trend structure validation (direction, rate, confidence)
+✅ Anomaly detection (deviation > 2σ)
+✅ Seasonality returns false for insufficient data
+✅ Location filter works correctly
 ✅ Quality threshold filter works correctly
 ```
 
@@ -537,12 +594,35 @@ proxy: {
 
 ---
 
+## Dependencies
+
+**Backend Python packages** (`requirements.txt`):
+```
+Flask==3.0.0                # Web framework
+Flask-CORS==4.0.0           # CORS support
+Flask-MySQLdb==2.0.0        # MySQL integration
+mysqlclient==2.2.0          # MySQL client library
+python-dotenv==1.0.0        # Environment variable loading (optional)
+requests==2.32.5            # For testing
+numpy>=1.26.0               # Statistical analysis (linear regression, std dev)
+```
+
+**Why numpy?**
+- Industry-standard library for numerical computing
+- Provides `polyfit()` for linear regression (trend detection)
+- Efficient mean/std dev calculations for anomaly detection
+- R² calculation for confidence scoring
+- Lightweight and well-supported
+
+---
+
 ## Notes & Observations
 
 - Priority: Backend > Frontend wiring > UI polish (per instructions)
 - Time budget: ~2 hours
 - Sample data includes 3 locations, 3 metrics, 40 data points
 - Frontend components are pre-built, need API integration only
+- **Backend API: 100% complete** (5/5 endpoints implemented and tested)
 
 ---
 
