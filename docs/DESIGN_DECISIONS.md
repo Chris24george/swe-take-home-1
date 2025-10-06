@@ -221,6 +221,98 @@ MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
 
 ---
 
+## Development Workflow & Environment
+
+**Decision:** MySQL as persistent background service for development
+**Date:** 2025-10-06
+
+### MySQL Setup:
+
+**Current Approach:**
+```bash
+# One-time setup
+brew install mysql pkg-config
+brew services start mysql    # Runs as background service
+
+# Create and seed database
+mysql -u root -e "CREATE DATABASE climate_data;"
+mysql -u root climate_data < backend/schema.sql
+python backend/seed_data.py
+```
+
+**Development Workflow:**
+```bash
+# Every coding session:
+cd backend
+source venv/bin/activate
+python app.py              # Flask connects to MySQL automatically
+
+# MySQL already running - no manual startup needed!
+```
+
+**Service Management:**
+```bash
+brew services list           # Check status
+brew services restart mysql  # Rare - only if issues
+brew services stop mysql     # Optional - when done developing
+```
+
+### Rationale:
+
+**Why background service instead of manual start/stop?**
+- ✅ **Simplicity** - Always ready, no startup friction
+- ✅ **Mirrors production** - Databases run continuously in real deployments
+- ✅ **Reviewer-friendly** - Simple setup instructions
+- ✅ **Stateful persistence** - Data survives between development sessions
+
+**Development Lifecycle:**
+1. ✅ MySQL runs as background service (always available)
+2. ✅ Database `climate_data` created once
+3. ✅ Schema applied once (`schema.sql`)
+4. ✅ Data seeded once (`seed_data.py`)
+5. ✅ Flask app creates new connections on each run
+
+**No restart needed between runs** - Flask creates fresh database connections each time `app.py` starts.
+
+### Future: Docker Support
+
+**Planned improvement** (post-assessment):
+```yaml
+# docker-compose.yml
+services:
+  mysql:
+    image: mysql:9.4
+    environment:
+      - MYSQL_ROOT_PASSWORD=
+      - MYSQL_DATABASE=climate_data
+    ports:
+      - "3306:3306"
+  
+  backend:
+    build: ./backend
+    environment:
+      - MYSQL_HOST=mysql
+    depends_on:
+      - mysql
+```
+
+**Benefits of Docker approach:**
+- ✅ Isolated environment (no local MySQL needed)
+- ✅ Consistent across dev/staging/production
+- ✅ Single command startup: `docker-compose up`
+- ✅ Easy cleanup: `docker-compose down`
+- ✅ Version-locked dependencies
+
+**Why not Docker for assessment?**
+- Assessment deliverable emphasizes speed (2-hour constraint)
+- Docker setup adds complexity reviewers must navigate
+- Direct MySQL shows database understanding without abstraction
+- Can add Docker later as enhancement
+
+**Our environment variable strategy already Docker-ready** - override `MYSQL_HOST` and other vars in container environment.
+
+---
+
 ## API Implementation Notes
 
 **Quality Weights** (from requirements):
