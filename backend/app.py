@@ -5,6 +5,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_mysqldb import MySQL
+import MySQLdb.cursors
 import os
 
 # Load environment variables from .env file if available
@@ -59,11 +60,28 @@ def get_locations():
     
     Returns location data in the format specified in the API docs.
     """
-    # TODO: Implement this endpoint
-    # 1. Query the locations table
-    # 2. Format response according to API specification
+    # Create a cursor that returns results as dictionaries
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     
-    return jsonify({"data": []})
+    # Query all locations from the database
+    cursor.execute("""
+        SELECT id, name, country, latitude, longitude, region
+        FROM locations
+    """)
+    
+    # Fetch all rows as a list of dictionaries
+    locations = cursor.fetchall()
+    
+    # Close the cursor to free resources
+    cursor.close()
+    
+    # Convert Decimal types to float for JSON serialization
+    for location in locations:
+        location['latitude'] = float(location['latitude'])
+        location['longitude'] = float(location['longitude'])
+    
+    # Return JSON response in API spec format
+    return jsonify({'data': locations})
 
 @app.route('/api/v1/metrics', methods=['GET'])
 def get_metrics():
@@ -119,7 +137,7 @@ def get_trends():
     return jsonify({"data": {}})
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
 
 # Optional: FastAPI Implementation boilerplate
 """
