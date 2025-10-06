@@ -20,11 +20,18 @@ export const getClimateData = async (filters = {}) => {
 
 /**
  * Fetch all available locations
- * @returns {Promise} - API response
+ * @returns {Promise} - API response with data property
  */
 export const getLocations = async () => {
   try {
-    // TODO: Implement API call
+    const response = await fetch(`${API_BASE_URL}/locations`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('API Error:', error);
     throw error;

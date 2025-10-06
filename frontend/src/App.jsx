@@ -3,6 +3,7 @@ import Filters from './components/Filters';
 import ChartContainer from './components/ChartContainer';
 import TrendAnalysis from './components/TrendAnalysis';
 import QualityIndicator from './components/QualityIndicator';
+import { getLocations } from './api';
 
 function App() {
   const [locations, setLocations] = useState([]);
@@ -18,6 +19,22 @@ function App() {
     analysisType: 'raw'
   });
   const [loading, setLoading] = useState(false);
+
+  // TEMPORARY: Test getLocations()
+  useEffect(() => {
+    const testAPI = async () => {
+      try {
+        console.log('🧪 Testing getLocations()...');
+        const result = await getLocations();
+        console.log('✅ getLocations() result:', result);
+        console.log('✅ Locations array:', result.data);
+        console.log('✅ Number of locations:', result.data.length);
+      } catch (error) {
+        console.error('❌ getLocations() failed:', error);
+      }
+    };
+    testAPI();
+  }, []);
 
   // Existing useEffect for locations and metrics
 
