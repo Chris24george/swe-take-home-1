@@ -90,11 +90,23 @@ def get_metrics():
     
     Returns metric data in the format specified in the API docs.
     """
-    # TODO: Implement this endpoint
-    # 1. Query the metrics table
-    # 2. Format response according to API specification
+    # Create a cursor that returns results as dictionaries
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     
-    return jsonify({"data": []})
+    # Query all metrics from the database
+    cursor.execute("""
+        SELECT id, name, display_name, unit, description
+        FROM metrics
+    """)
+    
+    # Fetch all rows as a list of dictionaries
+    metrics = cursor.fetchall()
+    
+    # Close the cursor to free resources
+    cursor.close()
+    
+    # Return JSON response in API spec format
+    return jsonify({'data': metrics})
 
 @app.route('/api/v1/summary', methods=['GET'])
 def get_summary():
