@@ -7,9 +7,11 @@ from flask_cors import CORS
 from flask_mysqldb import MySQL
 import MySQLdb.cursors
 import os
-import numpy as np
-from datetime import datetime
 from collections import defaultdict, Counter
+
+# Import custom modules
+from statistics import calculate_trend, detect_anomalies, detect_seasonality
+from filters import build_climate_filters, extract_filter_params
 
 # Load environment variables from .env file if available
 try:
@@ -47,12 +49,8 @@ def get_climate_data():
     
     Returns climate data in the format specified in the API docs.
     """
-    # Get query parameters (all optional)
-    location_id = request.args.get('location_id')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    metric = request.args.get('metric')
-    quality_threshold = request.args.get('quality_threshold')
+    # Extract filter parameters from request
+    filters = extract_filter_params(request)
     
     # Create cursor that returns dictionaries
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -76,42 +74,9 @@ def get_climate_data():
         WHERE 1=1
     """
     
-    # List to hold parameter values for safe parameterized query
+    # Apply filters using helper function (DRY principle)
     params = []
-    
-    # Add optional filters based on provided parameters
-    if location_id:
-        query += " AND cd.location_id = %s"
-        params.append(location_id)
-    
-    if metric:
-        query += " AND m.name = %s"
-        params.append(metric)
-    
-    if start_date:
-        query += " AND cd.date >= %s"
-        params.append(start_date)
-    
-    if end_date:
-        query += " AND cd.date <= %s"
-        params.append(end_date)
-    
-    # Handle quality threshold (minimum quality level)
-    if quality_threshold:
-        # Quality hierarchy: poor < questionable < good < excellent
-        quality_map = {
-            'poor': ['poor', 'questionable', 'good', 'excellent'],
-            'questionable': ['questionable', 'good', 'excellent'],
-            'good': ['good', 'excellent'],
-            'excellent': ['excellent']
-        }
-        
-        allowed_qualities = quality_map.get(quality_threshold.lower())
-        if allowed_qualities:
-            # Create placeholders for IN clause: (%s, %s, ...)
-            placeholders = ', '.join(['%s'] * len(allowed_qualities))
-            query += f" AND cd.quality IN ({placeholders})"
-            params.extend(allowed_qualities)
+    query, params = build_climate_filters(query, params, **filters)
     
     # Add ordering by date
     query += " ORDER BY cd.date"
@@ -205,18 +170,13 @@ def get_summary():
     
     Returns weighted min, max, and avg values for each metric in the format specified in the API docs.
     """
-    # STEP 1: Extract query parameters (same as /climate endpoint)
-    location_id = request.args.get('location_id')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    metric = request.args.get('metric')
-    quality_threshold = request.args.get('quality_threshold')
+    # STEP 1: Extract filter parameters from request
+    filters = extract_filter_params(request)
     
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     
     # STEP 2: Build SQL query to fetch raw data
     # We only need: metric name, unit, value, and quality
-    # The filtering logic is identical to /climate
     query = """
         SELECT 
             m.name as metric,
@@ -227,35 +187,10 @@ def get_summary():
         JOIN metrics m ON cd.metric_id = m.id
         WHERE 1=1
     """
+    
+    # Apply filters using helper function (DRY principle)
     params = []
-    
-    # Apply same filters as /climate endpoint
-    if location_id:
-        query += " AND cd.location_id = %s"
-        params.append(location_id)
-    if metric:
-        query += " AND m.name = %s"
-        params.append(metric)
-    if start_date:
-        query += " AND cd.date >= %s"
-        params.append(start_date)
-    if end_date:
-        query += " AND cd.date <= %s"
-        params.append(end_date)
-    
-    # Quality threshold filter (inclusive - "good" includes "good" and "excellent")
-    if quality_threshold:
-        quality_map = {
-            'poor': ['poor', 'questionable', 'good', 'excellent'],
-            'questionable': ['questionable', 'good', 'excellent'],
-            'good': ['good', 'excellent'],
-            'excellent': ['excellent']
-        }
-        allowed_qualities = quality_map.get(quality_threshold.lower())
-        if allowed_qualities:
-            placeholders = ', '.join(['%s'] * len(allowed_qualities))
-            query += f" AND cd.quality IN ({placeholders})"
-            params.extend(allowed_qualities)
+    query, params = build_climate_filters(query, params, **filters)
     
     # STEP 3: Execute query and fetch all matching rows
     cursor.execute(query, tuple(params))
@@ -327,12 +262,8 @@ def get_trends():
     
     Returns trend analysis including direction, rate of change, anomalies, and seasonality.
     """
-    # STEP 1: Extract query parameters (same as other endpoints)
-    location_id = request.args.get('location_id')
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    metric = request.args.get('metric')
-    quality_threshold = request.args.get('quality_threshold')
+    # STEP 1: Extract filter parameters from request
+    filters = extract_filter_params(request)
     
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     
@@ -349,35 +280,10 @@ def get_trends():
         JOIN metrics m ON cd.metric_id = m.id
         WHERE 1=1
     """
+    
+    # Apply filters using helper function (DRY principle)
     params = []
-    
-    # Apply same filters as other endpoints
-    if location_id:
-        query += " AND cd.location_id = %s"
-        params.append(location_id)
-    if metric:
-        query += " AND m.name = %s"
-        params.append(metric)
-    if start_date:
-        query += " AND cd.date >= %s"
-        params.append(start_date)
-    if end_date:
-        query += " AND cd.date <= %s"
-        params.append(end_date)
-    
-    # Quality threshold filter
-    if quality_threshold:
-        quality_map = {
-            'poor': ['poor', 'questionable', 'good', 'excellent'],
-            'questionable': ['questionable', 'good', 'excellent'],
-            'good': ['good', 'excellent'],
-            'excellent': ['excellent']
-        }
-        allowed_qualities = quality_map.get(quality_threshold.lower())
-        if allowed_qualities:
-            placeholders = ', '.join(['%s'] * len(allowed_qualities))
-            query += f" AND cd.quality IN ({placeholders})"
-            params.extend(allowed_qualities)
+    query, params = build_climate_filters(query, params, **filters)
     
     # ORDER BY date is crucial for trend analysis
     query += " ORDER BY m.name, cd.date"
@@ -417,149 +323,6 @@ def get_trends():
     
     # STEP 6: Return formatted response
     return jsonify({'data': result})
-
-
-def calculate_trend(data):
-    """
-    Calculate trend using linear regression.
-    Returns direction, rate of change, and confidence (R²).
-    """
-    dates = data['dates']
-    values = data['values']
-    unit = data['unit']
-    
-    # Need at least 3 points for meaningful trend analysis
-    if len(values) < 3:
-        return {
-            'direction': 'insufficient_data',
-            'rate': 0.0,
-            'unit': f'{unit}/month',
-            'confidence': 0.0
-        }
-    
-    # Convert dates to numeric values (days since first date)
-    date_objects = [datetime.strptime(str(d), '%Y-%m-%d') for d in dates]
-    days_since_start = [(d - date_objects[0]).days for d in date_objects]
-    
-    # Linear regression: y = mx + b (returns [slope, intercept])
-    coefficients = np.polyfit(days_since_start, values, 1)
-    slope = coefficients[0]  # Rate of change per day
-    
-    # Calculate R² (coefficient of determination) for confidence
-    y_pred = np.polyval(coefficients, days_since_start)
-    ss_res = np.sum((np.array(values) - y_pred) ** 2)  # Residual sum of squares
-    ss_tot = np.sum((np.array(values) - np.mean(values)) ** 2)  # Total sum of squares
-    
-    # R² = 1 - (SS_res / SS_tot), capped between 0 and 1
-    r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
-    r_squared = max(0.0, min(1.0, r_squared))  # Clamp to [0, 1]
-    
-    # Determine direction based on slope
-    # Use small threshold to avoid calling nearly-flat lines "increasing/decreasing"
-    slope_threshold = 0.01
-    if abs(slope) < slope_threshold:
-        direction = 'stable'
-    elif slope > 0:
-        direction = 'increasing'
-    else:
-        direction = 'decreasing'
-    
-    # Convert slope from per-day to per-month (approximate 30 days)
-    rate_per_month = slope * 30
-    
-    return {
-        'direction': direction,
-        'rate': round(rate_per_month, 2),
-        'unit': f'{unit}/month',
-        'confidence': round(r_squared, 2)
-    }
-
-
-def detect_anomalies(data):
-    """
-    Detect anomalies using standard deviation method.
-    Returns list of data points > 2 standard deviations from mean.
-    """
-    dates = data['dates']
-    values = data['values']
-    qualities = data['qualities']
-    
-    # Need at least 3 points for meaningful statistics
-    if len(values) < 3:
-        return []
-    
-    # Calculate mean and standard deviation
-    mean = np.mean(values)
-    std_dev = np.std(values)
-    
-    # If std_dev is 0, all values are identical (no anomalies possible)
-    if std_dev == 0:
-        return []
-    
-    # Find anomalies (> 2 standard deviations from mean)
-    anomalies = []
-    threshold = 2.0
-    
-    for date, value, quality in zip(dates, values, qualities):
-        deviation = abs(value - mean) / std_dev
-        
-        if deviation > threshold:
-            anomalies.append({
-                'date': str(date),  # Ensure it's a string
-                'value': round(value, 1),
-                'deviation': round(deviation, 2),
-                'quality': quality
-            })
-    
-    # Sort by deviation (highest first)
-    anomalies.sort(key=lambda x: x['deviation'], reverse=True)
-    
-    return anomalies
-
-
-def detect_seasonality(data):
-    """
-    Detect seasonal patterns in the data.
-    
-    Note: Our sample dataset (~6 weeks) is insufficient for true seasonality detection.
-    This returns detected: false honestly, but the logic is structured to support
-    seasonality detection when sufficient data exists (6-12+ months).
-    """
-    dates = data['dates']
-    
-    if not dates:
-        return {
-            'detected': False,
-            'period': 'none',
-            'confidence': 0.0
-        }
-    
-    # Convert to datetime objects
-    date_objects = [datetime.strptime(str(d), '%Y-%m-%d') for d in dates]
-    
-    # Calculate date range span
-    date_range_days = (max(date_objects) - min(date_objects)).days
-    
-    # Need at least 180 days (~6 months) for meaningful seasonal pattern detection
-    if date_range_days < 180:
-        return {
-            'detected': False,
-            'period': 'none',
-            'confidence': 0.0
-        }
-    
-    # If we had sufficient data, we would:
-    # 1. Group data by season (map month to season)
-    # 2. Calculate average per season
-    # 3. Detect recurring patterns
-    # 4. Measure confidence via variance analysis
-    
-    # For now, this will always return false for our sample data
-    return {
-        'detected': False,
-        'period': 'none',
-        'confidence': 0.0
-    }
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
