@@ -44,13 +44,21 @@ QUALITY_WEIGHTS = {
 @app.route('/api/v1/climate', methods=['GET'])
 def get_climate_data():
     """
-    Retrieve climate data with optional filtering.
-    Query parameters: location_id, start_date, end_date, metric, quality_threshold
+    Retrieve climate data with optional filtering and pagination.
+    Query parameters: location_id, start_date, end_date, metric, quality_threshold, page, page_size
     
     Returns climate data in the format specified in the API docs.
     """
     # Extract filter parameters from request
     filters = extract_filter_params(request)
+    
+    # Extract pagination parameters
+    page = request.args.get('page', 1, type=int)
+    page_size = request.args.get('page_size', 20, type=int)
+    
+    # Validate pagination parameters
+    page = max(1, page)  # At least page 1
+    page_size = min(max(1, page_size), 100)  # Between 1 and 100
     
     # Create cursor that returns dictionaries
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -78,8 +86,25 @@ def get_climate_data():
     params = []
     query, params = build_climate_filters(query, params, **filters)
     
+    # Get total count before pagination (for metadata)
+    count_query = """
+        SELECT COUNT(*) as total
+        FROM climate_data cd
+        JOIN locations l ON cd.location_id = l.id
+        JOIN metrics m ON cd.metric_id = m.id
+        WHERE 1=1
+    """
+    count_query, count_params = build_climate_filters(count_query, [], **filters)
+    cursor.execute(count_query, tuple(count_params))
+    total_count = cursor.fetchone()['total']
+    
     # Add ordering by date
     query += " ORDER BY cd.date"
+    
+    # Add pagination (LIMIT and OFFSET)
+    offset = (page - 1) * page_size
+    query += " LIMIT %s OFFSET %s"
+    params.extend([page_size, offset])
     
     # Execute query with parameters
     cursor.execute(query, tuple(params))
@@ -95,13 +120,19 @@ def get_climate_data():
         # Convert date to string
         row['date'] = str(row['date'])
     
-    # Build response with meta information
+    # Calculate pagination metadata
+    total_pages = (total_count + page_size - 1) // page_size  # Ceiling division
+    
+    # Build response with pagination metadata
     response = {
         'data': data,
         'meta': {
-            'total_count': len(data),
-            'page': 1,
-            'per_page': 50
+            'page': page,
+            'page_size': page_size,
+            'total_count': total_count,
+            'total_pages': total_pages,
+            'has_next': page < total_pages,
+            'has_previous': page > 1
         }
     }
     
@@ -325,28 +356,6 @@ def get_trends():
     return jsonify({'data': result})
 
 if __name__ == '__main__':
-    # Auto-seed database if empty (for Docker and first-time setup)
-    try:
-        with app.app_context():
-            cur = mysql.connection.cursor()
-            cur.execute("SELECT COUNT(*) FROM climate_data")
-            count = cur.fetchone()[0]
-            cur.close()
-            
-            if count == 0:
-                print("📊 Database is empty. Seeding with sample data...")
-                import subprocess
-                result = subprocess.run(['python', 'seed_data.py'], 
-                                        capture_output=True, text=True)
-                if result.returncode == 0:
-                    print("✅ Database seeded successfully!")
-                else:
-                    print(f"⚠️  Seeding failed: {result.stderr}")
-            else:
-                print(f"✅ Database already contains {count} records. Skipping seed.")
-    except Exception as e:
-        print(f"⚠️  Could not check/seed database: {e}")
-    
     # Bind to 0.0.0.0 for Docker, works fine locally too
     app.run(debug=True, host='0.0.0.0', port=5001)
 

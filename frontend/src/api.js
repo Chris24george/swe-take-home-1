@@ -20,6 +20,10 @@ const buildQueryParams = (filters) => {
   if (filters.metric) params.append('metric', filters.metric);
   if (filters.qualityThreshold) params.append('quality_threshold', filters.qualityThreshold);
   
+  // Add pagination parameters
+  if (filters.page) params.append('page', filters.page);
+  if (filters.pageSize) params.append('page_size', filters.pageSize);
+  
   return params;
 };
 

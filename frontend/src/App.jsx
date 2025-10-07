@@ -4,6 +4,7 @@ import ChartContainer from './components/ChartContainer';
 import TrendAnalysis from './components/TrendAnalysis';
 import QualityIndicator from './components/QualityIndicator';
 import SummaryStats from './components/SummaryStats';
+import PaginationControls from './components/PaginationControls';
 import { getLocations, getMetrics, getClimateData, getClimateSummary, getTrends } from './api';
 
 function App() {
@@ -21,6 +22,11 @@ function App() {
     analysisType: 'raw'
   });
   const [loading, setLoading] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(20);
+  const [paginationMeta, setPaginationMeta] = useState(null);
 
   // Load locations and metrics on component mount
   useEffect(() => {
@@ -42,7 +48,12 @@ function App() {
   }, []);
 
   // Fetch data based on current filters and analysis type
-  const fetchData = async () => {
+  const fetchData = async (resetPage = true) => {
+    // Reset to page 1 when filters change (user clicked "Apply Filters")
+    if (resetPage) {
+      setCurrentPage(1);
+    }
+    
     setLoading(true);
     try {
       if (filters.analysisType === 'trends') {
@@ -50,14 +61,23 @@ function App() {
         setTrendData(response.data);
         setClimateData([]);  // Clear other data
         setSummaryData(null);
+        setPaginationMeta(null);  // Clear pagination
       } else if (filters.analysisType === 'weighted') {
         const response = await getClimateSummary(filters);
         setSummaryData(response.data);
         setClimateData([]);  // Clear other data
         setTrendData(null);
+        setPaginationMeta(null);  // Clear pagination
       } else {
-        const response = await getClimateData(filters);
+        // Raw data view - include pagination
+        const pageToFetch = resetPage ? 1 : currentPage;
+        const response = await getClimateData({
+          ...filters,
+          page: pageToFetch,
+          pageSize: pageSize
+        });
         setClimateData(response.data);
+        setPaginationMeta(response.meta);  // Store pagination metadata
         setTrendData(null);  // Clear other data
         setSummaryData(null);
       }
@@ -67,6 +87,18 @@ function App() {
       setLoading(false);
     }
   };
+
+  // Handle page changes
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+  };
+
+  // Refetch data when page changes (for raw data view only)
+  useEffect(() => {
+    if (filters.analysisType === 'raw' && climateData.length > 0) {
+      fetchData(false);  // Don't reset page - use currentPage
+    }
+  }, [currentPage]);
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -118,6 +150,10 @@ function App() {
             </div>
             <QualityIndicator 
               data={climateData}
+            />
+            <PaginationControls
+              meta={paginationMeta}
+              onPageChange={handlePageChange}
             />
           </>
         )}
