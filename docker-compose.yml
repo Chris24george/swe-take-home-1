@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: climate-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password123
+      MYSQL_DATABASE: climate_data
+      MYSQL_ALLOW_EMPTY_PASSWORD: "no"
+    ports:
+      - "3306:3306"
+    volumes:
+      # Mount schema for automatic initialization
+      - ./backend/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      # Persist data between container restarts
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword123"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Backend Flask API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: climate-backend
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password123
+      MYSQL_DB: climate_data
+      FLASK_ENV: development
+      FLASK_DEBUG: "True"
+    ports:
+      - "5001:5001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      # Mount code for hot reload in development
+      - ./backend:/app
+      # Mount data directory (for seed_data.py)
+      - ./data:/data
+      # Don't overwrite these
+      - /app/__pycache__
+    # Seed database, then start Flask
+    command: sh -c "python seed_data.py && python app.py"
+
+  # Frontend React App
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: climate-frontend
+    environment:
+      VITE_API_URL: http://backend:5001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    volumes:
+      # Mount code for hot reload
+      - ./frontend:/app
+      # Don't overwrite node_modules
+      - /app/node_modules
+
+volumes:
+  mysql_data:
+    driver: local
+
