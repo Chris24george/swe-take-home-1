@@ -327,22 +327,23 @@ def get_trends():
 if __name__ == '__main__':
     # Auto-seed database if empty (for Docker and first-time setup)
     try:
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT COUNT(*) FROM climate_data")
-        count = cur.fetchone()[0]
-        cur.close()
-        
-        if count == 0:
-            print("📊 Database is empty. Seeding with sample data...")
-            import subprocess
-            result = subprocess.run(['python', 'seed_data.py'], 
-                                    capture_output=True, text=True)
-            if result.returncode == 0:
-                print("✅ Database seeded successfully!")
+        with app.app_context():
+            cur = mysql.connection.cursor()
+            cur.execute("SELECT COUNT(*) FROM climate_data")
+            count = cur.fetchone()[0]
+            cur.close()
+            
+            if count == 0:
+                print("📊 Database is empty. Seeding with sample data...")
+                import subprocess
+                result = subprocess.run(['python', 'seed_data.py'], 
+                                        capture_output=True, text=True)
+                if result.returncode == 0:
+                    print("✅ Database seeded successfully!")
+                else:
+                    print(f"⚠️  Seeding failed: {result.stderr}")
             else:
-                print(f"⚠️  Seeding failed: {result.stderr}")
-        else:
-            print(f"✅ Database already contains {count} records. Skipping seed.")
+                print(f"✅ Database already contains {count} records. Skipping seed.")
     except Exception as e:
         print(f"⚠️  Could not check/seed database: {e}")
     
