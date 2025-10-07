@@ -117,17 +117,17 @@ function Filters({ locations, metrics, filters, onFilterChange, onApplyFilters }
             <span className="text-sm text-gray-700">Raw Data</span>
           </label>
 
-          <label className="flex items-center cursor-pointer">
-            <input
-              type="radio"
-              name="analysisType"
-              value="weighted"
-              checked={filters.analysisType === 'weighted'}
-              onChange={(e) => handleChange('analysisType', e.target.value)}
-              className="mr-2 text-eco-primary focus:ring-eco-primary"
-            />
-            <span className="text-sm text-gray-700">Quality Weighted</span>
-          </label>
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="radio"
+                    name="analysisType"
+                    value="weighted"
+                    checked={filters.analysisType === 'weighted'}
+                    onChange={(e) => handleChange('analysisType', e.target.value)}
+                    className="mr-2 text-eco-primary focus:ring-eco-primary"
+                  />
+                  <span className="text-sm text-gray-700">Summary</span>
+                </label>
 
           <label className="flex items-center cursor-pointer">
             <input
