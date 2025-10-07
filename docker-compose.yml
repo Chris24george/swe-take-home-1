@@ -45,7 +45,8 @@ services:
       - ./backend:/app
       # Don't overwrite these
       - /app/__pycache__
-    # Use the entrypoint script (defined in Dockerfile CMD)
+    # Seed database, then start Flask
+    command: sh -c "python seed_data.py && python app.py"
 
   # Frontend React App
   frontend:
