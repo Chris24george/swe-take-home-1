@@ -3,12 +3,14 @@ import Filters from './components/Filters';
 import ChartContainer from './components/ChartContainer';
 import TrendAnalysis from './components/TrendAnalysis';
 import QualityIndicator from './components/QualityIndicator';
+import SummaryStats from './components/SummaryStats';
 import { getLocations, getMetrics, getClimateData, getClimateSummary, getTrends } from './api';
 
 function App() {
   const [locations, setLocations] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [climateData, setClimateData] = useState([]);
+  const [summaryData, setSummaryData] = useState(null);
   const [trendData, setTrendData] = useState(null);
   const [filters, setFilters] = useState({
     locationId: '',
@@ -26,9 +28,11 @@ function App() {
       try {
         const locationsResponse = await getLocations();
         setLocations(locationsResponse.data);
+        console.log('✅ Loaded locations:', locationsResponse.data.length);
         
         const metricsResponse = await getMetrics();
         setMetrics(metricsResponse.data);
+        console.log('✅ Loaded metrics:', metricsResponse.data.length);
       } catch (error) {
         console.error('Failed to load initial data:', error);
       }
@@ -44,14 +48,18 @@ function App() {
       if (filters.analysisType === 'trends') {
         const response = await getTrends(filters);
         setTrendData(response.data);
+        setClimateData([]);  // Clear other data
+        setSummaryData(null);
       } else if (filters.analysisType === 'weighted') {
         const response = await getClimateSummary(filters);
-        // Summary data has different structure - for now, just log it
-        console.log('Summary data:', response.data);
-        setClimateData([]); // Clear climate data when showing summary
+        setSummaryData(response.data);
+        setClimateData([]);  // Clear other data
+        setTrendData(null);
       } else {
         const response = await getClimateData(filters);
         setClimateData(response.data);
+        setTrendData(null);  // Clear other data
+        setSummaryData(null);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -79,36 +87,41 @@ function App() {
         onApplyFilters={fetchData}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="mt-8">
         {filters.analysisType === 'trends' ? (
           <TrendAnalysis 
             data={trendData}
             loading={loading}
           />
+        ) : filters.analysisType === 'weighted' ? (
+          <SummaryStats
+            data={summaryData}
+            loading={loading}
+          />
         ) : (
           <>
-            <ChartContainer 
-              title="Climate Trends"
-              loading={loading}
-              chartType="line"
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              <ChartContainer 
+                title="Climate Trends"
+                loading={loading}
+                chartType="line"
+                data={climateData}
+                showQuality={true}
+              />
+              <ChartContainer 
+                title="Quality Distribution"
+                loading={loading}
+                chartType="bar"
+                data={climateData}
+                showQuality={true}
+              />
+            </div>
+            <QualityIndicator 
               data={climateData}
-              showQuality={true}
-            />
-            <ChartContainer 
-              title="Quality Distribution"
-              loading={loading}
-              chartType="bar"
-              data={climateData}
-              showQuality={true}
             />
           </>
         )}
       </div>
-
-      <QualityIndicator 
-        data={climateData}
-        className="mt-6"
-      />
     </div>
   );
 }
