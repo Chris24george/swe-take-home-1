@@ -69,31 +69,35 @@ docker-compose up --build
 
 **Backend setup:**
 ```bash
-# 1. Install and start MySQL
+# 1. Clone and navigate to the repository
+git clone <repository-url>
+cd swe-take-home-1
+
+# 2. Install and start MySQL
 brew install mysql pkg-config
 brew services start mysql
 
-# 2. Create database and schema
+# 3. Create database and schema
 mysql -u root -e "CREATE DATABASE climate_data;"
 mysql -u root climate_data < backend/schema.sql
 
-# 3. Set up Python environment
+# 4. Set up Python environment
 cd backend
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# 4. Seed the database
+# 5. Seed the database
 python seed_data.py
 
-# 5. Run the backend server
+# 6. Run the backend server
 python app.py
 # Server runs on http://localhost:5001
 ```
 
 **Frontend setup (in a new terminal):**
 ```bash
-cd frontend
+cd swe-take-home-1/frontend
 npm install
 npm run dev
 # Frontend runs on http://localhost:3000
