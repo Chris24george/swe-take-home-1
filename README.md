@@ -6,7 +6,7 @@ A full-stack application for visualizing and analyzing climate data with quality
 
 ### My implementation notes/decision points
 
-My full writeup on the decisions that I made and things I considered while making the project is available to view here: [Writeup] (https://trail-brow-e2e.notion.site/Chris-George-Mutual-of-Omaha-Take-Home-Project-28216b0f7d8180b4a583c89e9b677b57?source=copy_link)
+My full writeup on the decisions that I made and things I considered while making the project is available to view here: [Writeup](https://trail-brow-e2e.notion.site/Chris-George-Mutual-of-Omaha-Take-Home-Project-28216b0f7d8180b4a583c89e9b677b57?source=copy_link)
 
 ---
 
