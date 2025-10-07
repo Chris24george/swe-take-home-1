@@ -43,6 +43,8 @@ services:
     volumes:
       # Mount code for hot reload in development
       - ./backend:/app
+      # Mount data directory (for seed_data.py)
+      - ./data:/data
       # Don't overwrite these
       - /app/__pycache__
     # Seed database, then start Flask

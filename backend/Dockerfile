@@ -19,6 +19,6 @@ COPY . .
 # Expose Flask port
 EXPOSE 5001
 
-# Run Flask app (auto-seeds on startup if needed)
+# Run Flask app (seeding handled by docker-compose command)
 CMD ["python", "app.py"]
 
