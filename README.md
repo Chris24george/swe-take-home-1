@@ -10,7 +10,7 @@ My full writeup on the decisions that I made and things I considered while makin
 
 ---
 
-## 📋 Project Overview
+## Project Overview
 
 ### Backend API (100% Complete)
 
@@ -38,7 +38,7 @@ My full writeup on the decisions that I made and things I considered while makin
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Docker (Recommended)
 
@@ -124,7 +124,7 @@ npm run dev
 
 ---
 
-## 🗄️ Configuration
+## Configuration
 
 ### Docker Configuration
 
@@ -204,7 +204,7 @@ curl "http://localhost:5001/api/v1/trends?location_id=1"
 
 ---
 
-## 📡 API Endpoints
+## API Endpoints
 
 ### Base URL: `http://localhost:5001/api/v1`
 
@@ -231,7 +231,7 @@ All data endpoints support these filters:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Deployment Options
 
@@ -290,7 +290,7 @@ Key optimizations:
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 swe-take-home-1/
@@ -341,7 +341,7 @@ swe-take-home-1/
 
 ---
 
-## 📚 Additional Documentation
+## Additional Documentation
 
 - **API Specification:** `docs/api.md`
 - **Database Schema:** `docs/schema.md`
@@ -350,12 +350,12 @@ swe-take-home-1/
 
 ---
 
-## 👤 Author
+## Author
 
 Chris George
 
 ---
 
-## 📝 License
+## License
 
 This project is part of a take-home assessment for Mutual of Omaha.
