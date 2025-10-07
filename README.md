@@ -19,50 +19,80 @@ This project demonstrates:
 - ✅ Comprehensive automated testing (31/31 tests passing)
 - ✅ React frontend with three analysis modes
 - ✅ Full-stack integration (API + UI working seamlessly)
+- ✅ Docker containerization with docker-compose orchestration
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended)
 
-- **Python 3.13+** (or 3.10+)
-- **MySQL 8.0+** (or 5.7+)
-- **Node.js 18+** (for frontend)
-- **Homebrew** (macOS) or equivalent package manager
-
-### Installation
+**Prerequisites:** Docker and Docker Compose
 
 ```bash
 # 1. Clone the repository
 git clone <repository-url>
 cd swe-take-home-1
 
-# 2. Install MySQL (if not already installed)
+# 2. Start everything with one command
+docker-compose up
+
+# That's it! The application will:
+# - Build the backend and frontend containers
+# - Start MySQL and create the database
+# - Automatically seed 40 climate records
+# - Launch the full stack
+```
+
+**Access the application:**
+- **Frontend UI:** http://localhost:3000
+- **Backend API:** http://localhost:5001/api/v1/
+
+**Stop the application:**
+```bash
+docker-compose down
+```
+
+**To rebuild after code changes:**
+```bash
+docker-compose up --build
+```
+
+---
+
+### Option 2: Local Development
+
+**Prerequisites:**
+- Python 3.13+ (or 3.10+)
+- MySQL 8.0+ (or 5.7+)
+- Node.js 18+
+
+**Backend setup:**
+```bash
+# 1. Install and start MySQL
 brew install mysql pkg-config
 brew services start mysql
 
-# 3. Set up the database
+# 2. Create database and schema
 mysql -u root -e "CREATE DATABASE climate_data;"
 mysql -u root climate_data < backend/schema.sql
 
-# 4. Set up Python backend
+# 3. Set up Python environment
 cd backend
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# 5. Seed the database with sample data
+# 4. Seed the database
 python seed_data.py
 
-# 6. Run the backend server
+# 5. Run the backend server
 python app.py
 # Server runs on http://localhost:5001
 ```
 
-**Frontend setup:**
+**Frontend setup (in a new terminal):**
 ```bash
-# In a new terminal window
 cd frontend
 npm install
 npm run dev
@@ -72,23 +102,27 @@ npm run dev
 **Access the application:**
 - Frontend UI: http://localhost:3000
 - Backend API: http://localhost:5001/api/v1/
-```
 
 ---
 
-## 🗄️ Database Configuration
+## 🗄️ Configuration
 
-### Default Configuration
+### Docker Configuration
 
-The application works out-of-the-box with these defaults:
+Docker works out-of-the-box with no configuration needed. Settings are defined in `docker-compose.yml`:
+- MySQL runs in a container with persistent volume
+- Database automatically created and seeded
+- Hot reload enabled for development
+
+### Local Development Configuration
+
+**Default settings:**
 - **Host:** localhost
 - **User:** root
 - **Password:** (empty)
 - **Database:** climate_data
 
-### Custom Configuration
-
-If your MySQL setup differs, create a `.env` file in the `backend/` directory:
+**Custom configuration:** Create a `.env` file in `backend/`:
 
 ```bash
 # backend/.env
@@ -180,6 +214,17 @@ All data endpoints support these filters:
 
 ## 🏗️ Architecture
 
+### Deployment Options
+
+- **Docker** (recommended): Full-stack deployment with docker-compose
+  - MySQL 8.0 in container with persistent volume
+  - Backend and frontend with hot reload
+  - One-command setup with automatic database seeding
+  
+- **Local Development**: Traditional setup with local MySQL
+  - More control over individual services
+  - Useful for debugging and development
+
 ### Backend Stack
 
 - **Framework:** Flask 3.0 (Python web framework)
@@ -187,6 +232,7 @@ All data endpoints support these filters:
 - **ORM:** Flask-MySQLdb (direct SQL for performance)
 - **Statistical Analysis:** NumPy (linear regression, anomaly detection)
 - **Testing:** Custom test suite with `requests` library
+- **Containerization:** Docker with multi-stage builds
 
 ### Database Schema
 
