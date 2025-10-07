@@ -3,7 +3,7 @@ import Filters from './components/Filters';
 import ChartContainer from './components/ChartContainer';
 import TrendAnalysis from './components/TrendAnalysis';
 import QualityIndicator from './components/QualityIndicator';
-import { getLocations, getMetrics, getClimateData } from './api';
+import { getLocations, getMetrics, getClimateData, getClimateSummary, getTrends } from './api';
 
 function App() {
   const [locations, setLocations] = useState([]);
@@ -20,17 +20,17 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
 
-  // TEMPORARY: Test API functions
+  // TEMPORARY: Test ALL API functions
   useEffect(() => {
     const testAPI = async () => {
       try {
         console.log('🧪 Testing getLocations()...');
         const locResult = await getLocations();
-        console.log('✅ getLocations():', locResult.data);
+        console.log('✅ getLocations():', locResult.data.length, 'locations');
         
         console.log('🧪 Testing getMetrics()...');
         const metResult = await getMetrics();
-        console.log('✅ getMetrics():', metResult.data);
+        console.log('✅ getMetrics():', metResult.data.length, 'metrics');
         
         console.log('🧪 Testing getClimateData() with filters...');
         const climateResult = await getClimateData({ 
@@ -38,7 +38,16 @@ function App() {
           metric: 'temperature' 
         });
         console.log('✅ getClimateData():', climateResult.data.length, 'records');
-        console.log('   First record:', climateResult.data[0]);
+        
+        console.log('🧪 Testing getClimateSummary()...');
+        const summaryResult = await getClimateSummary({ metric: 'temperature' });
+        console.log('✅ getClimateSummary():', summaryResult.data);
+        
+        console.log('🧪 Testing getTrends()...');
+        const trendsResult = await getTrends({ metric: 'temperature' });
+        console.log('✅ getTrends():', trendsResult.data);
+        
+        console.log('🎉 All API functions working!');
       } catch (error) {
         console.error('❌ API test failed:', error);
       }

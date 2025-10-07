@@ -91,11 +91,47 @@ export const getMetrics = async () => {
 /**
  * Fetch climate summary statistics with optional filters
  * @param {Object} filters - Filter parameters
- * @returns {Promise} - API response
+ * @returns {Promise} - API response with data property
  */
 export const getClimateSummary = async (filters = {}) => {
   try {
-    // TODO: Implement API call with filters
+    const params = buildQueryParams(filters);
+    const queryString = params.toString();
+    const url = `${API_BASE_URL}/summary${queryString ? '?' + queryString : ''}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw error;
+  }
+};
+
+/**
+ * Fetch trend analysis with optional filters
+ * @param {Object} filters - Filter parameters
+ * @returns {Promise} - API response with data property
+ */
+export const getTrends = async (filters = {}) => {
+  try {
+    const params = buildQueryParams(filters);
+    const queryString = params.toString();
+    const url = `${API_BASE_URL}/trends${queryString ? '?' + queryString : ''}`;
+    
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
   } catch (error) {
     console.error('API Error:', error);
     throw error;
