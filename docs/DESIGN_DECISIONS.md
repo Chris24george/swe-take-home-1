@@ -788,15 +788,290 @@ numpy>=1.26.0               # Statistical analysis (linear regression, std dev)
 
 ---
 
-## Notes & Observations
+## Frontend Implementation
 
-- Priority: Backend > Frontend wiring > UI polish (per instructions)
-- Time budget: ~2 hours
-- Sample data includes 3 locations, 3 metrics, 40 data points
-- Frontend components are pre-built, need API integration only
-- **Backend API: 100% complete** (5/5 endpoints implemented and tested)
+**Status:** ✅ Complete
+**Date:** 2025-10-07
+
+### Architecture: Smart/Dumb Component Pattern
+
+**Decision:** Centralized state in App.jsx, presentational components below
+
+**Rationale:**
+- Single source of truth for all application state
+- Unidirectional data flow (props down, events up)
+- Easier to debug and test
+- Clear separation of concerns
+
+### Components Implemented:
+
+#### **1. API Service Layer (`frontend/src/api.js`)**
+
+**Purpose:** Centralize all backend API calls
+
+```javascript
+// Service functions for all 5 endpoints:
+- getLocations()
+- getMetrics()
+- getClimateData(filters)
+- getClimateSummary(filters)
+- getTrends(filters)
+
+// Helper: buildQueryParams()
+// Converts camelCase filters → snake_case query parameters
+{ locationId: '1', startDate: '2025-01-01' }
+→ ?location_id=1&start_date=2025-01-01
+```
+
+**Benefits:**
+- ✅ **DRY principle**: API logic not duplicated across components
+- ✅ **Type safety**: Consistent parameter handling
+- ✅ **Error handling**: Centralized try-catch blocks
+- ✅ **Maintainability**: Single place to update if API changes
+
+#### **2. Filters Component (`frontend/src/components/Filters.jsx`)**
+
+**Pattern:** Controlled component (all state lives in parent)
+
+**Features:**
+- Location dropdown (populated from API)
+- Metric dropdown (populated from API)
+- Start/End date pickers
+- Quality threshold dropdown (poor/questionable/good/excellent)
+- Analysis type radio buttons (Raw Data / Quality Weighted / Trends)
+- Apply Filters button
+
+**Implementation:**
+```javascript
+// All inputs are controlled:
+<select value={filters.locationId} onChange={handleChange} />
+
+// handleChange updates parent state via callback:
+const handleChange = (field, value) => {
+  onFilterChange({ ...filters, [field]: value });
+};
+
+// Apply button triggers data fetch:
+<button onClick={onApplyFilters}>Apply Filters</button>
+```
+
+**Key Decisions:**
+- Quality levels pulled dynamically from backend schema (excellent/good/questionable/poor)
+- Metric dropdown uses `metric.name` (not ID) because API expects string
+- All dropdowns have "All" option (empty string value)
+- Responsive grid layout (mobile-friendly)
+
+#### **3. SummaryStats Component (`frontend/src/components/SummaryStats.jsx`)**
+
+**Purpose:** Display quality-weighted summary statistics
+
+**Why created:**
+- Pre-built `ChartContainer` expects time-series data
+- `/api/v1/summary` returns aggregated stats (min/max/avg/weighted_avg)
+- Needed custom component to display this data structure
+
+**Features:**
+- Per-metric stat cards (min, max, avg, weighted avg)
+- Highlights quality-weighted average (primary metric)
+- Quality distribution badges with color coding
+- Loading and empty states
+
+**Layout:**
+```
+┌─────────────────────────────────────┐
+│ Temperature Statistics              │
+│ ┌─────┬─────┬─────┬──────────────┐ │
+│ │ Min │ Max │ Avg │ Weighted Avg │ │
+│ │15.2 │25.8 │20.1 │    20.3°C    │ │
+│ └─────┴─────┴─────┴──────────────┘ │
+│ Quality Distribution:               │
+│ [Excellent 45%] [Good 30%] ...      │
+└─────────────────────────────────────┘
+```
+
+#### **4. App Component (`frontend/src/App.jsx`)**
+
+**Role:** Smart component managing all application state
+
+**State Management:**
+```javascript
+const [locations, setLocations] = useState([]);     // Dropdown options
+const [metrics, setMetrics] = useState([]);         // Dropdown options
+const [climateData, setClimateData] = useState([]); // Raw data view
+const [summaryData, setSummaryData] = useState(null); // Weighted view
+const [trendData, setTrendData] = useState(null);   // Trends view
+const [filters, setFilters] = useState({...});      // Current filters
+const [loading, setLoading] = useState(false);      // Loading indicator
+```
+
+**Data Flow:**
+
+**1. Initial Load (useEffect):**
+```
+Component mounts
+    ↓
+Load locations & metrics from API
+    ↓
+Populate filter dropdowns
+    ↓
+Wait for user interaction
+```
+
+**2. User Applies Filters:**
+```
+User changes filters → updates state
+    ↓
+User clicks "Apply Filters"
+    ↓
+fetchData() runs:
+  - Check analysisType
+  - Call appropriate API (climate/summary/trends)
+  - Set corresponding data state
+  - Clear other data states
+    ↓
+Component re-renders with new data
+    ↓
+Appropriate visualization displays
+```
+
+**3. Conditional Rendering:**
+```javascript
+{filters.analysisType === 'trends' ? (
+  <TrendAnalysis data={trendData} loading={loading} />
+) : filters.analysisType === 'weighted' ? (
+  <SummaryStats data={summaryData} loading={loading} />
+) : (
+  <>
+    <ChartContainer chartType="line" data={climateData} />
+    <ChartContainer chartType="bar" data={climateData} />
+    <QualityIndicator data={climateData} />
+  </>
+)}
+```
+
+### Three Analysis Types:
+
+#### **1. Raw Data View** (default)
+- Displays time-series line chart
+- Bar chart for quality distribution
+- Quality indicator showing data breakdown
+- Uses `/api/v1/climate` endpoint
+
+#### **2. Quality Weighted View**
+- Displays summary statistics cards
+- Shows min/max/avg and quality-weighted average
+- Quality distribution percentages
+- Uses `/api/v1/summary` endpoint
+
+#### **3. Trends & Anomalies View**
+- Displays trend direction, rate, confidence
+- Lists detected anomalies with deviation scores
+- Shows seasonal patterns (if detected)
+- Uses `/api/v1/trends` endpoint
+
+### Pre-Built Components (Used As-Is):
+
+#### **ChartContainer.jsx**
+- Renders line or bar charts using Chart.js
+- Expects: `[{ date, value, location_name, quality, unit }, ...]`
+- Supports quality-based coloring
+- Our `/climate` endpoint returns exactly this format ✅
+
+#### **TrendAnalysis.jsx**
+- Displays trend analysis results
+- Expects: `{ metric: { trend, anomalies, seasonality }, ... }`
+- Our `/trends` endpoint returns exactly this format ✅
+
+#### **QualityIndicator.jsx**
+- Shows quality distribution bar
+- Expects: array with `quality` property
+- Works with our raw climate data ✅
+
+### Design Patterns Used:
+
+**1. Controlled Components**
+```javascript
+// Value comes from parent state
+<input value={filters.startDate} onChange={handleChange} />
+```
+
+**2. Lifting State Up**
+```javascript
+// State lives in App, passed down as props
+<Filters filters={filters} onFilterChange={setFilters} />
+```
+
+**3. Container/Presentational Split**
+- App.jsx = Container (state, logic, API calls)
+- Filters/SummaryStats/etc = Presentational (UI only)
+
+**4. Callback Props**
+```javascript
+// Child calls parent's function to update state
+onFilterChange={setFilters}
+onApplyFilters={fetchData}
+```
+
+### Key Decisions & Trade-offs:
+
+**1. Why Create SummaryStats Instead of Transforming Data?**
+- ✅ **Semantic correctness**: Summary data is fundamentally different from time-series
+- ✅ **User experience**: Stat cards more appropriate than forcing into chart
+- ✅ **Maintainability**: Clear component responsibility
+- ❌ Alternative: Transform summary → fake time-series (confusing, hacky)
+
+**2. Why Clear Other Data States on Fetch?**
+```javascript
+if (analysisType === 'trends') {
+  setTrendData(response.data);
+  setClimateData([]);      // Clear
+  setSummaryData(null);    // Clear
+}
+```
+- ✅ **Memory efficiency**: Don't keep stale data
+- ✅ **Bug prevention**: Conditional rendering won't show wrong data
+- ✅ **Clear state transitions**: One data type active at a time
+
+**3. Why Not Auto-Load Data on Mount?**
+- ✅ **Explicit user action**: User must click "Apply Filters"
+- ✅ **Filter clarity**: User sees what filters produce what data
+- ✅ **Performance**: Don't load potentially large datasets unnecessarily
+- Alternative considered: Load with default filters → rejected as presumptuous
+
+### Testing Approach:
+
+**Manual browser testing:**
+1. ✅ Raw Data view with various filters
+2. ✅ Quality Weighted view (SummaryStats displaying correctly)
+3. ✅ Trends view (TrendAnalysis showing trends/anomalies)
+4. ✅ Filter combinations (location + metric + date range + quality)
+5. ✅ Empty state handling (no data message)
+6. ✅ Loading states (spinner displays)
+
+**No automated frontend tests** - assessment prioritizes functionality over test coverage
+
+### Integration Success:
+
+**All pre-built components worked without modification:**
+- ✅ ChartContainer expects exact format our API returns
+- ✅ TrendAnalysis expects exact format our API returns
+- ✅ QualityIndicator works with raw data array
+- ✅ Only needed to create SummaryStats for weighted view
+
+**This validates our backend API design** - proper planning during backend implementation meant seamless frontend integration.
 
 ---
 
-_This document will be updated as we make decisions and progress through implementation._
+## Notes & Observations
+
+- Priority: Backend > Frontend wiring > UI polish (per instructions)
+- Time budget: ~2 hours (significantly exceeded for thoroughness)
+- Sample data includes 3 locations, 3 metrics, 40 data points
+- **Backend API: 100% complete** (5/5 endpoints implemented and tested)
+- **Frontend: 100% complete** (All 3 analysis types functional)
+- **Full-stack integration successful** - no API modifications needed
+
+---
+
+_Last updated: 2025-10-07_
 
