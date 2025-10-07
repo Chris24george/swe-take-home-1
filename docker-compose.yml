@@ -45,7 +45,7 @@ services:
       - ./backend:/app
       # Don't overwrite these
       - /app/__pycache__
-    command: python app.py
+    # Use the entrypoint script (defined in Dockerfile CMD)
 
   # Frontend React App
   frontend:
