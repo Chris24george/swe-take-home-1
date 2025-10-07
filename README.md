@@ -4,15 +4,37 @@
 
 A full-stack application for visualizing and analyzing climate data with quality-weighted statistics, trend detection, and anomaly identification.
 
+### My implementation notes/decision points
+
+My full writeup on the decisions that I made and things I considered while making the project is available to view here: [Writeup] (https://trail-brow-e2e.notion.site/Chris-George-Mutual-of-Omaha-Take-Home-Project-28216b0f7d8180b4a583c89e9b677b57?source=copy_link)
+
 ---
 
 ## 📋 Project Overview
 
-**Status:** ✅ **Complete** - Full-stack application ready for deployment
+### Backend API (100% Complete)
 
-### My implementation notes/decision points
+- ✅ `/api/v1/locations` - All monitoring locations
+- ✅ `/api/v1/metrics` - Available climate metrics
+- ✅ `/api/v1/climate` - Filtered climate data with dynamic queries
+- ✅ `/api/v1/summary` - Quality-weighted statistical aggregations
+- ✅ `/api/v1/trends` - Trend detection with linear regression and anomaly identification
+- ✅ 31 automated tests (all passing)
+- ✅ SQL injection prevention via parameterized queries
+- ✅ Environment variable configuration
+- ✅ Comprehensive documentation
+- ✅ Code refactoring (filters.py, statistics.py)
 
-My full writeup on the decisions that I made and things I considered while making the project is available to view here: https://trail-brow-e2e.notion.site/Chris-George-Mutual-of-Omaha-Take-Home-Project-28216b0f7d8180b4a583c89e9b677b57?source=copy_link
+### Frontend (100% Complete)
+
+- ✅ API service integration (`api.js`)
+- ✅ Filter component with dynamic dropdowns
+- ✅ Three analysis modes (Raw Data, Quality Weighted, Trends)
+- ✅ Data visualization with Chart.js
+- ✅ Trend analysis UI with anomaly detection
+- ✅ Quality distribution indicators
+- ✅ Custom SummaryStats component for weighted view
+- ✅ Responsive design with Tailwind CSS
 
 ---
 
@@ -316,34 +338,6 @@ swe-take-home-1/
 ├── .env.example                # Environment variable template
 └── README.md                   # This file
 ```
-
----
-
-## ✅ Implementation Status
-
-### Backend API (100% Complete)
-
-- ✅ `/api/v1/locations` - All monitoring locations
-- ✅ `/api/v1/metrics` - Available climate metrics
-- ✅ `/api/v1/climate` - Filtered climate data with dynamic queries
-- ✅ `/api/v1/summary` - Quality-weighted statistical aggregations
-- ✅ `/api/v1/trends` - Trend detection with linear regression and anomaly identification
-- ✅ 31 automated tests (all passing)
-- ✅ SQL injection prevention via parameterized queries
-- ✅ Environment variable configuration
-- ✅ Comprehensive documentation
-- ✅ Code refactoring (filters.py, statistics.py)
-
-### Frontend (100% Complete)
-
-- ✅ API service integration (`api.js`)
-- ✅ Filter component with dynamic dropdowns
-- ✅ Three analysis modes (Raw Data, Quality Weighted, Trends)
-- ✅ Data visualization with Chart.js
-- ✅ Trend analysis UI with anomaly detection
-- ✅ Quality distribution indicators
-- ✅ Custom SummaryStats component for weighted view
-- ✅ Responsive design with Tailwind CSS
 
 ---
 
