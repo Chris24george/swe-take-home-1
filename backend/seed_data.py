@@ -39,7 +39,7 @@ def load_sample_data():
         return json.load(f)
 
 def seed_database():
-    """Seed the database with sample data"""
+    """Seed the database with sample data (idempotent - skips if data exists)"""
     print("Loading sample data...")
     data = load_sample_data()
     
@@ -49,6 +49,22 @@ def seed_database():
         # Connect to database
         conn = MySQLdb.connect(**DB_CONFIG)
         cursor = conn.cursor()
+        
+        # Check if database already has data
+        cursor.execute("SELECT COUNT(*) FROM climate_data")
+        existing_count = cursor.fetchone()[0]
+        
+        if existing_count > 0:
+            print(f"\n✓ Database already contains {existing_count} records. Skipping seed.")
+            print(f"\nDatabase Summary:")
+            cursor.execute("SELECT COUNT(*) FROM locations")
+            print(f"  Locations: {cursor.fetchone()[0]}")
+            cursor.execute("SELECT COUNT(*) FROM metrics")
+            print(f"  Metrics: {cursor.fetchone()[0]}")
+            print(f"  Climate Data: {existing_count}")
+            cursor.close()
+            conn.close()
+            return
         
         print("\nSeeding locations...")
         for location in data['locations']:
