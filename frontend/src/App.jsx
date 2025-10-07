@@ -3,7 +3,7 @@ import Filters from './components/Filters';
 import ChartContainer from './components/ChartContainer';
 import TrendAnalysis from './components/TrendAnalysis';
 import QualityIndicator from './components/QualityIndicator';
-import { getLocations, getMetrics } from './api';
+import { getLocations, getMetrics, getClimateData } from './api';
 
 function App() {
   const [locations, setLocations] = useState([]);
@@ -31,6 +31,14 @@ function App() {
         console.log('🧪 Testing getMetrics()...');
         const metResult = await getMetrics();
         console.log('✅ getMetrics():', metResult.data);
+        
+        console.log('🧪 Testing getClimateData() with filters...');
+        const climateResult = await getClimateData({ 
+          locationId: '1', 
+          metric: 'temperature' 
+        });
+        console.log('✅ getClimateData():', climateResult.data.length, 'records');
+        console.log('   First record:', climateResult.data[0]);
       } catch (error) {
         console.error('❌ API test failed:', error);
       }
