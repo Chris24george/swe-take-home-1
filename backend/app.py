@@ -325,7 +325,8 @@ def get_trends():
     return jsonify({'data': result})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Bind to 0.0.0.0 for Docker, works fine locally too
+    app.run(debug=True, host='0.0.0.0', port=5001)
 
 # Optional: FastAPI Implementation boilerplate
 """
