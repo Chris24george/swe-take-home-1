@@ -281,61 +281,47 @@ Key optimizations:
 swe-take-home-1/
 ├── backend/
 │   ├── app.py                  # Flask application & API endpoints
-│   ├── schema.sql              # Database DDL
+│   ├── filters.py              # Filter logic (DRY refactor)
+│   ├── statistics.py           # Statistical calculations (trends, anomalies)
+│   ├── schema.sql              # Database DDL (idempotent)
 │   ├── seed_data.py            # Database seeding script
-│   ├── test_basic.py           # Automated test suite (20 tests)
+│   ├── test_basic.py           # Automated test suite (31 tests)
 │   ├── requirements.txt        # Python dependencies
+│   ├── Dockerfile              # Backend container configuration
 │   ├── venv/                   # Virtual environment (gitignored)
 │   └── .env.example            # Environment variable template
 ├── frontend/
 │   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── api.js              # API service functions
-│   │   └── App.jsx             # Main application
-│   ├── package.json
-│   └── vite.config.js
+│   │   ├── components/
+│   │   │   ├── ChartContainer.jsx      # Reusable chart component
+│   │   │   ├── Filters.jsx             # Filter UI with dropdowns
+│   │   │   ├── PaginationControls.jsx  # Pagination UI
+│   │   │   ├── QualityIndicator.jsx    # Data quality visualization
+│   │   │   ├── SummaryStats.jsx        # Quality-weighted stats view
+│   │   │   └── TrendAnalysis.jsx       # Trend & anomaly visualization
+│   │   ├── api.js              # API service layer
+│   │   ├── App.jsx             # Main application component
+│   │   ├── main.jsx            # React entry point
+│   │   └── index.css           # Global styles (Tailwind)
+│   ├── public/                 # Static assets
+│   ├── index.html              # HTML template
+│   ├── package.json            # Node dependencies
+│   ├── vite.config.js          # Vite configuration (proxy setup)
+│   ├── tailwind.config.js      # Tailwind CSS configuration
+│   ├── postcss.config.js       # PostCSS configuration
+│   ├── Dockerfile              # Frontend container configuration
+│   └── README.md               # Frontend documentation
 ├── data/
-│   └── sample_data.json        # Sample climate data
+│   └── sample_data.json        # Sample climate data (40 records)
 ├── docs/
-│   ├── api.md                  # API specification
+│   ├── api.md                  # API specification with examples
 │   ├── schema.md               # Database requirements
 │   ├── DESIGN_DECISIONS.md     # Technical rationale & decisions
 │   └── TEST-chrisg.md          # Assessment instructions
-├── .gitignore
-├── .env.example
+├── docker-compose.yml          # Multi-container orchestration
+├── .gitignore                  # Git exclusions
+├── .env.example                # Environment variable template
 └── README.md                   # This file
-```
-
----
-
-## 🔧 Troubleshooting
-
-### Port 5000 Already in Use
-
-**Issue:** macOS AirPlay Receiver uses port 5000
-
-**Solution:** The app runs on port 5001 instead (already configured)
-
-### MySQL Connection Errors
-
-```bash
-# Check MySQL is running
-brew services list
-
-# Restart MySQL if needed
-brew services restart mysql
-
-# Verify database exists
-mysql -u root -e "SHOW DATABASES;"
-```
-
-### Python Dependencies
-
-```bash
-# If mysqlclient fails to install
-brew install mysql pkg-config
-pip install --upgrade pip
-pip install -r requirements.txt
 ```
 
 ---
@@ -372,32 +358,14 @@ pip install -r requirements.txt
 
 - **API Specification:** `docs/api.md`
 - **Database Schema:** `docs/schema.md`
-- **Design Decisions:** `docs/DESIGN_DECISIONS.md` (comprehensive technical rationale)
+- **Design Decisions:** `docs/DESIGN_DECISIONS.md` (AI notes dump)
 - **Assessment Instructions:** `docs/TEST-chrisg.md`
-
----
-
-## 🎯 Development Approach
-
-**Prioritization (per instructions):**
-1. ✅ **Backend API** - Complete with all 5 endpoints
-2. ✅ **Frontend Integration** - All components wired and functional
-3. ✅ **UI Polish** - Responsive design & professional UX
-
-**Quality Focus:**
-- Production-quality code with error handling
-- Security best practices (parameterized queries, CORS)
-- Comprehensive testing (31 tests, all passing)
-- Clear documentation and design rationale
-- Code modularity and maintainability
 
 ---
 
 ## 👤 Author
 
 Chris George
-
-**Contact:** [Your contact info]
 
 ---
 
