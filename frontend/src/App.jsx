@@ -20,69 +20,38 @@ function App() {
   });
   const [loading, setLoading] = useState(false);
 
-  // TEMPORARY: Test ALL API functions
+  // Load locations and metrics on component mount
   useEffect(() => {
-    const testAPI = async () => {
+    const loadInitialData = async () => {
       try {
-        console.log('🧪 Testing getLocations()...');
-        const locResult = await getLocations();
-        console.log('✅ getLocations():', locResult.data.length, 'locations');
+        const locationsResponse = await getLocations();
+        setLocations(locationsResponse.data);
         
-        console.log('🧪 Testing getMetrics()...');
-        const metResult = await getMetrics();
-        console.log('✅ getMetrics():', metResult.data.length, 'metrics');
-        
-        console.log('🧪 Testing getClimateData() with filters...');
-        const climateResult = await getClimateData({ 
-          locationId: '1', 
-          metric: 'temperature' 
-        });
-        console.log('✅ getClimateData():', climateResult.data.length, 'records');
-        
-        console.log('🧪 Testing getClimateSummary()...');
-        const summaryResult = await getClimateSummary({ metric: 'temperature' });
-        console.log('✅ getClimateSummary():', summaryResult.data);
-        
-        console.log('🧪 Testing getTrends()...');
-        const trendsResult = await getTrends({ metric: 'temperature' });
-        console.log('✅ getTrends():', trendsResult.data);
-        
-        console.log('🎉 All API functions working!');
+        const metricsResponse = await getMetrics();
+        setMetrics(metricsResponse.data);
       } catch (error) {
-        console.error('❌ API test failed:', error);
+        console.error('Failed to load initial data:', error);
       }
     };
-    testAPI();
+    
+    loadInitialData();
   }, []);
 
-  // Existing useEffect for locations and metrics
-
-  // Updated fetch function to handle different analysis types
+  // Fetch data based on current filters and analysis type
   const fetchData = async () => {
     setLoading(true);
     try {
-      const queryParams = new URLSearchParams({
-        ...(filters.locationId && { location_id: filters.locationId }),
-        ...(filters.startDate && { start_date: filters.startDate }),
-        ...(filters.endDate && { end_date: filters.endDate }),
-        ...(filters.metric && { metric: filters.metric }),
-        ...(filters.qualityThreshold && { quality_threshold: filters.qualityThreshold })
-      });
-
-      let endpoint = '/api/v1/climate';
       if (filters.analysisType === 'trends') {
-        endpoint = '/api/v1/trends';
+        const response = await getTrends(filters);
+        setTrendData(response.data);
       } else if (filters.analysisType === 'weighted') {
-        endpoint = '/api/v1/summary';
-      }
-
-      const response = await fetch(`${endpoint}?${queryParams}`);
-      const data = await response.json();
-      
-      if (filters.analysisType === 'trends') {
-        setTrendData(data.data);
+        const response = await getClimateSummary(filters);
+        // Summary data has different structure - for now, just log it
+        console.log('Summary data:', response.data);
+        setClimateData([]); // Clear climate data when showing summary
       } else {
-        setClimateData(data.data);
+        const response = await getClimateData(filters);
+        setClimateData(response.data);
       }
     } catch (error) {
       console.error('Error fetching data:', error);
