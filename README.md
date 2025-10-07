@@ -10,16 +10,9 @@ A full-stack application for visualizing and analyzing climate data with quality
 
 **Status:** ✅ **Complete** - Full-stack application ready for deployment
 
-This project demonstrates:
-- ✅ RESTful API design with Flask
-- ✅ MySQL database design and optimization
-- ✅ Dynamic filtering with parameterized queries (SQL injection prevention)
-- ✅ Statistical analysis (linear regression, anomaly detection, seasonality)
-- ✅ Quality-weighted calculations
-- ✅ Comprehensive automated testing (31/31 tests passing)
-- ✅ React frontend with three analysis modes
-- ✅ Full-stack integration (API + UI working seamlessly)
-- ✅ Docker containerization with docker-compose orchestration
+### My implementation notes/decision points
+
+My full writeup on the decisions that I made and things I considered while making the project is available to view here: https://trail-brow-e2e.notion.site/Chris-George-Mutual-of-Omaha-Take-Home-Project-28216b0f7d8180b4a583c89e9b677b57?source=copy_link
 
 ---
 
