@@ -91,12 +91,13 @@ def calculate_trend(data):
     }
 
 
-def detect_anomalies(data):
+def detect_anomalies(data, metric_name=None):
     """
     Detect anomalies using standard deviation method.
     
     Args:
-        data: Dict with 'dates', 'values', and 'qualities' keys
+        data: Dict with 'dates', 'values', 'qualities', 'unit', and location data
+        metric_name: Name of the metric being analyzed
         
     Returns:
         List of anomalies (data points > 2 standard deviations from mean)
@@ -104,6 +105,12 @@ def detect_anomalies(data):
     dates = data['dates']
     values = data['values']
     qualities = data['qualities']
+    unit = data.get('unit', '')
+    locations = data.get('locations', [])
+    countries = data.get('countries', [])
+    latitudes = data.get('latitudes', [])
+    longitudes = data.get('longitudes', [])
+    location_ids = data.get('location_ids', [])
     
     # Need at least 3 points for meaningful statistics
     if len(values) < 3:
@@ -121,16 +128,34 @@ def detect_anomalies(data):
     anomalies = []
     threshold = 2.0
     
-    for date, value, quality in zip(dates, values, qualities):
+    # Prepare iterables with defaults if location data is missing
+    locations_iter = locations if locations else [''] * len(dates)
+    countries_iter = countries if countries else [''] * len(dates)
+    latitudes_iter = latitudes if latitudes else [0] * len(dates)
+    longitudes_iter = longitudes if longitudes else [0] * len(dates)
+    location_ids_iter = location_ids if location_ids else [0] * len(dates)
+    
+    for date, value, quality, location, country, lat, lon, loc_id in zip(
+        dates, values, qualities, locations_iter, countries_iter, 
+        latitudes_iter, longitudes_iter, location_ids_iter
+    ):
         deviation = abs(value - mean) / std_dev
         
         if deviation > threshold:
-            anomalies.append({
+            anomaly = {
                 'date': str(date),  # Ensure it's a string
                 'value': round(value, 1),
                 'deviation': round(deviation, 2),
-                'quality': quality
-            })
+                'quality': quality,
+                'unit': unit,
+                'metric': metric_name if metric_name else '',
+                'location_name': location,
+                'country': country,
+                'latitude': round(lat, 4) if lat else 0,
+                'longitude': round(lon, 4) if lon else 0,
+                'location_id': loc_id
+            }
+            anomalies.append(anomaly)
     
     # Sort by deviation (highest first)
     anomalies.sort(key=lambda x: x['deviation'], reverse=True)

@@ -71,15 +71,7 @@ function TrendAnalysis({ data, loading }) {
                 <h4 className="font-medium text-gray-700 mb-2 capitalize">{metric}</h4>
                 <div className="space-y-1">
                   {analysis.anomalies.map((anomaly, index) => (
-                    <div key={index} className="flex items-center text-sm">
-                      <span className="w-32">{anomaly.date}</span>
-                      <span className="w-24">{anomaly.value}</span>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        anomaly.deviation > 3 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {anomaly.deviation.toFixed(1)} σ
-                      </span>
-                    </div>
+                    <AnomalyItem key={index} anomaly={anomaly} />
                   ))}
                 </div>
               </div>
@@ -146,6 +138,37 @@ function getTrendIcon(direction) {
     default:
       return null;
   }
+}
+
+function AnomalyItem({ anomaly }) {
+  return (
+    <div 
+      className="flex items-center text-sm cursor-help relative group"
+    >
+      <span className="w-32">{anomaly.date}</span>
+      <span className="w-24">{anomaly.value}</span>
+      <span className={`px-2 py-1 rounded text-xs ${
+        anomaly.deviation > 3 ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
+      }`}>
+        {anomaly.deviation.toFixed(1)} σ
+      </span>
+      
+      {/* Custom tooltip */}
+      <div className="invisible group-hover:visible absolute left-0 top-full mt-2 w-80 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-10 whitespace-pre-line">
+        <div className="space-y-1">
+          <div><strong>Location:</strong> {anomaly.location_name || 'N/A'}, {anomaly.country || 'N/A'}</div>
+          <div><strong>Coordinates:</strong> {anomaly.latitude || 'N/A'}, {anomaly.longitude || 'N/A'}</div>
+          <div><strong>Metric:</strong> {anomaly.metric || 'N/A'}</div>
+          <div><strong>Value:</strong> {anomaly.value} {anomaly.unit || ''}</div>
+          <div><strong>Date:</strong> {anomaly.date}</div>
+          <div><strong>Quality:</strong> {anomaly.quality}</div>
+          <div><strong>Deviation:</strong> {anomaly.deviation.toFixed(1)}σ from mean</div>
+        </div>
+        {/* Triangle pointer */}
+        <div className="absolute -top-1 left-4 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+      </div>
+    </div>
+  );
 }
 
 export default TrendAnalysis;

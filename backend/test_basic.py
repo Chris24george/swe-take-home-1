@@ -373,7 +373,9 @@ def run_tests():
             "anomaly has required fields": lambda d:
                 len(d['data']['temperature']['anomalies']) == 0 or
                 all(k in d['data']['temperature']['anomalies'][0] 
-                    for k in ['date', 'value', 'deviation', 'quality'])
+                    for k in ['date', 'value', 'deviation', 'quality', 
+                             'location_name', 'country', 'latitude', 'longitude', 
+                             'location_id', 'metric', 'unit'])
         }
     ):
         tests_passed += 1

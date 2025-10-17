@@ -299,16 +299,22 @@ def get_trends():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     
     # STEP 2: Build SQL query to fetch time-series data
-    # We need: metric name, unit, date, value, quality (ordered by date for trend analysis)
+    # We need: metric name, unit, date, value, quality, location details (ordered by date for trend analysis)
     query = """
         SELECT 
             m.name as metric,
             m.unit,
             cd.date,
             cd.value,
-            cd.quality
+            cd.quality,
+            l.name as location_name,
+            l.country,
+            l.latitude,
+            l.longitude,
+            cd.location_id
         FROM climate_data cd
         JOIN metrics m ON cd.metric_id = m.id
+        JOIN locations l ON cd.location_id = l.id
         WHERE 1=1
     """
     
@@ -329,7 +335,12 @@ def get_trends():
         'dates': [],
         'values': [],
         'qualities': [],
-        'unit': None
+        'unit': None,
+        'locations': [],
+        'countries': [],
+        'latitudes': [],
+        'longitudes': [],
+        'location_ids': []
     })
     
     for row in rows:
@@ -338,6 +349,11 @@ def get_trends():
         metrics_data[metric_name]['values'].append(float(row['value']))
         metrics_data[metric_name]['qualities'].append(row['quality'])
         metrics_data[metric_name]['unit'] = row['unit']
+        metrics_data[metric_name]['locations'].append(row['location_name'])
+        metrics_data[metric_name]['countries'].append(row['country'])
+        metrics_data[metric_name]['latitudes'].append(float(row['latitude']))
+        metrics_data[metric_name]['longitudes'].append(float(row['longitude']))
+        metrics_data[metric_name]['location_ids'].append(row['location_id'])
     
     # STEP 5: Calculate trend analysis for each metric
     result = {}
@@ -348,7 +364,7 @@ def get_trends():
             
         result[metric_name] = {
             'trend': calculate_trend(data),
-            'anomalies': detect_anomalies(data),
+            'anomalies': detect_anomalies(data, metric_name),
             'seasonality': detect_seasonality(data)
         }
     
