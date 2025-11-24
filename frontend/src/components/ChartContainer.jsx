@@ -43,10 +43,13 @@ const qualityColors = {
 function ChartContainer({ title, loading, chartType, data, showQuality = false }) {
   if (loading) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow-md h-96">
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-96">
         <h2 className="text-xl font-semibold text-eco-primary mb-4">{title}</h2>
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500">Loading data...</p>
+        <div className="flex items-center justify-center h-5/6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-12 h-12 border-4 border-eco-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-gray-500 animate-pulse">Loading data...</p>
+          </div>
         </div>
       </div>
     );
@@ -54,10 +57,16 @@ function ChartContainer({ title, loading, chartType, data, showQuality = false }
 
   if (!data || data.length === 0) {
     return (
-      <div className="bg-white p-4 rounded-lg shadow-md h-96">
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-96">
         <h2 className="text-xl font-semibold text-eco-primary mb-4">{title}</h2>
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500">No data available. Please apply filters to see visualizations.</p>
+        <div className="flex items-center justify-center h-5/6">
+          <div className="text-center">
+            <svg className="w-16 h-16 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <p className="text-gray-500">No data available</p>
+            <p className="text-gray-400 text-sm mt-1">Apply filters to see visualizations</p>
+          </div>
         </div>
       </div>
     );
@@ -129,8 +138,19 @@ function ChartContainer({ title, loading, chartType, data, showQuality = false }
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md h-96">
-      <h2 className="text-xl font-semibold text-eco-primary mb-4">{title}</h2>
+    <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100 h-96 transition-all duration-300 hover:shadow-xl">
+      <h2 className="text-xl font-semibold text-eco-primary mb-4 flex items-center gap-2">
+        {chartType === 'line' ? (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+          </svg>
+        ) : (
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        )}
+        {title}
+      </h2>
       <div className="h-5/6">
         {chartType === 'line' ? (
           <Line data={chartData} options={chartOptions} />
